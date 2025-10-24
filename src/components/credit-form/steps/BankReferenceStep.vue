@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import type { CreditForm, Bank, Address } from '../types'
-import { stateOptions } from '../utilities';
+import { stateOptions } from '../utilities'
+import { required, faxRule, emailRule, zipRule, phoneRule } from 'src/utility/validators'
 
 const props = defineProps<{ modelValue: CreditForm }>()
 const emit = defineEmits(['update:modelValue', 'next', 'back'])
 
-// small helpers
 const emptyAddr = (): Address => ({ address: '', city: '', state: '', zip: '' })
 const emptyBank = (): Bank => ({
     name: '',
@@ -17,10 +17,8 @@ const emptyBank = (): Bank => ({
     address: emptyAddr()
 })
 
-// local, editable copy to avoid mutating props
 const localBank = ref<Bank>(props.modelValue.bank ? { ...props.modelValue.bank } : emptyBank())
 
-// sync up to parent on any change
 watch(
     localBank,
     (val) => {
@@ -28,27 +26,38 @@ watch(
     },
     { deep: true }
 )
+
+const formRef = ref()
+
+async function onNext() {
+    const ok = await formRef.value?.validate()
+    if (ok === true) emit('next')
+}
 </script>
 
 <template>
-    <div class="q-gutter-md">
+    <q-form ref="formRef" greedy class="q-gutter-md">
 
         <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
-                <q-input v-model="localBank.name" label="Bank Name *" />
+                <q-input filled bg-color="grey-4" v-model="localBank.name" label="Bank Name *" :rules="[required]" />
             </div>
             <div class="col-12 col-md-6">
-                <q-input v-model="localBank.accountNo" label="Account # *" />
+                <q-input filled bg-color="grey-4" v-model="localBank.accountNo" label="Account # *"
+                    :rules="[required]" />
             </div>
 
             <div class="col-12 col-md-4">
-                <q-input v-model="localBank.phone" label="Phone" mask="(###) ###-####" fill-mask />
+                <q-input filled bg-color="grey-4" v-model="localBank.phone" label="Phone" mask="(###) ###-####"
+                    fill-mask :rules="[required, phoneRule]" />
             </div>
             <div class="col-12 col-md-4">
-                <q-input v-model="localBank.fax" label="Fax" mask="(###) ###-####" fill-mask />
+                <q-input filled bg-color="grey-4" v-model="localBank.fax" label="Fax" mask="(###) ###-####" fill-mask
+                    :rules="[faxRule]" />
             </div>
             <div class="col-12 col-md-4">
-                <q-input v-model="localBank.email" label="Email" type="email" />
+                <q-input filled bg-color="grey-4" v-model="localBank.email" label="Email" type="email"
+                    :rules="[required, emailRule]" />
             </div>
         </div>
 
@@ -57,23 +66,25 @@ watch(
         <div class="text-subtitle2">Bank Address</div>
         <div class="row q-col-gutter-md">
             <div class="col-12">
-                <q-input v-model="localBank.address.address" label="Street" />
+                <q-input filled bg-color="grey-4" v-model="localBank.address.address" label="Street"
+                    :rules="[required]" />
             </div>
             <div class="col-12 col-md-5">
-                <q-input v-model="localBank.address.city" label="City" />
+                <q-input filled bg-color="grey-4" v-model="localBank.address.city" label="City" :rules="[required]" />
             </div>
             <div class="col-6 col-md-3">
-                <q-select v-model="localBank.address.state" :options="stateOptions" label="State" emit-value
-                    map-options />
+                <q-select filled bg-color="grey-4" v-model="localBank.address.state" :options="stateOptions"
+                    label="State" emit-value map-options :rules="[required]" />
             </div>
             <div class="col-6 col-md-4">
-                <q-input v-model="localBank.address.zip" label="ZIP" mask="#####-####" fill-mask />
+                <q-input filled bg-color="grey-4" v-model="localBank.address.zip" label="ZIP" mask="#####-####"
+                    fill-mask :rules="[required, zipRule]" />
             </div>
         </div>
 
         <div class="row q-gutter-sm q-mt-md">
             <q-btn color="secondary" label="Back" @click="emit('back')" />
-            <q-btn color="primary" label="Next" @click="emit('next')" />
+            <q-btn color="primary" label="Next" @click="onNext" />
         </div>
-    </div>
+    </q-form>
 </template>

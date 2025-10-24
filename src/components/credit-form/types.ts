@@ -72,7 +72,7 @@ export type Signer = {
 
 export type CreditForm = {
     // business
-    firmName: string
+    companyName: string
     dbaName?: string
     phone: string
     fax?: string

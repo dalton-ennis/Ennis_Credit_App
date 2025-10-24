@@ -6,7 +6,7 @@ const EMPTY_ADDR = (): Address => ({ address: '', city: '', state: '', zip: '' }
 export function useCreditForm() {
     const form = ref<CreditForm>({
         // Business
-        firmName: '',
+        companyName: '',
         dbaName: '',
         phone: '',
         fax: '',
@@ -29,7 +29,7 @@ export function useCreditForm() {
         ],
 
         // Branching
-        requestLineOfCredit: true,
+        requestLineOfCredit: false,
         requestTaxExempt: false,
 
         // Credit app
