@@ -1,4 +1,11 @@
 export type RuleResult = true | string
+export type RuleFn = (v: unknown) => RuleResult
+
+const toNum = (v: unknown): number => {
+    if (typeof v === 'number') return v
+    if (typeof v === 'string') return Number(v)
+    return NaN
+}
 
 export const required = (v: unknown): RuleResult => {
     if (typeof v === 'string') return v.trim().length > 0 || 'Required'
@@ -44,5 +51,36 @@ export const nonEmptyForEachKey = (obj: Record<string, string>, keys: string[]):
     for (const k of keys) {
         if (!obj?.[k] || !obj[k].trim()) return `Enter value for ${k}`
     }
+    return true
+}
+
+
+
+// Year must be within [currentYear - 18, currentYear + 1]
+export const yearRule = (v: unknown) => {
+    const yr = toNum(v)
+    const min = new Date().getFullYear() - 18
+    const max = new Date().getFullYear() + 1
+
+    if (!Number.isFinite(yr)) return 'Enter a year'
+    if (yr < min || yr > max) return `Year must be between ${min} and ${max}`
+    return true
+}
+
+// Month must be 1-12
+export const monthRule = (v: unknown) => {
+    const mm = toNum(v)
+
+    if (!Number.isFinite(mm)) return 'Enter a month'
+    if (mm < 1 || mm > 12) return 'Month must be 1–12'
+    return true
+}
+
+// Day must be 1-31
+export const dayRule = (v: unknown) => {
+    const dd = toNum(v)
+
+    if (!Number.isFinite(dd)) return 'Enter a day'
+    if (dd < 1 || dd > 31) return 'Day must be 1–31'
     return true
 }

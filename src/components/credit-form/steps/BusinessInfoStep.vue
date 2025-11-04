@@ -3,6 +3,7 @@ import { ref, watch, onMounted } from 'vue'
 import type { CreditForm, Address } from '../types'
 import { stateOptions } from '../utilities'
 import { required, emailRule, zipRule, phoneRule } from 'src/utility/validators';
+import { fieldUi } from '../utilities';
 
 const props = defineProps<{ modelValue: CreditForm }>()
 const emit = defineEmits(['update:modelValue', 'next'])
@@ -12,9 +13,21 @@ const ensureMailing = (form: CreditForm) => {
     if (form.mailingDifferent && !form.mailing) form.mailing = emptyAddr()
 }
 
+const ensureContacts = (form: CreditForm) => {
+    if (!Array.isArray(form.contacts) || form.contacts.length === 0) {
+        form.contacts = [{ role: 'main', name: '', title: '', email: '' }]
+    } else {
+        // Make sure first one is tagged as main
+        form.contacts[0]!.role = form.contacts[0]!.role || 'main'
+    }
+}
+
 const local = ref<CreditForm>({ ...props.modelValue })
 
-onMounted(() => ensureMailing(local.value))
+onMounted(() => {
+    ensureMailing(local.value)
+    ensureContacts(local.value)
+})
 
 watch(
     local,
@@ -37,54 +50,63 @@ async function onNext() {
     if (ok) emit('next')
 }
 
+function addContact() {
+    local.value.contacts.push({ role: 'additional', name: '', title: '', email: '' })
+}
+function removeContact(i: number) {
+    if (local.value.contacts.length > 1) {
+        local.value.contacts.splice(i, 1)
+    }
+}
+function contactLabel(i: number) {
+    return i === 0 ? 'Main Contact' : `Additional Contact ${i}`
+}
+
 </script>
 
 <template>
     <q-form ref="formRef" greedy class="q-gutter-lg">
-
         <!-- Core business identity -->
         <div class="row q-col-gutter-md">
             <div class="col-12 col-md-6">
-                <q-input filled bg-color="grey-4" v-model="local.companyName" label="Company Name *"
-                    :rules="[required]" />
+                <q-input v-bind="fieldUi" v-model="local.companyName" label="Company Name *" :rules="[required]" />
             </div>
 
             <div class="col-12 col-md-6">
-                <q-input filled bg-color="grey-4" v-model="local.dbaName" label="DBA" />
+                <q-input v-bind="fieldUi" v-model="local.dbaName" label="DBA" />
             </div>
 
             <div class="col-12 col-md-3">
-                <q-input filled bg-color="grey-4" v-model="local.phone" label="Phone *" mask="(###) ###-####" fill-mask
+                <q-input v-bind="fieldUi" v-model="local.phone" label="Phone *" mask="(###) ###-####" fill-mask
                     :rules="[required, phoneRule]" />
             </div>
 
             <div class="col-12 col-md-3">
-                <q-input filled bg-color="grey-4" v-model="local.fax" label="Fax" mask="(###) ###-####" fill-mask />
+                <q-input v-bind="fieldUi" v-model="local.fax" label="Fax" mask="(###) ###-####" fill-mask />
             </div>
 
             <div class="col-12 col-md-6">
-                <q-input filled bg-color="grey-4" v-model="local.email" label="Email *" type="email"
+                <q-input v-bind="fieldUi" v-model="local.email" label="Email *" type="email"
                     :rules="[required, emailRule]" />
             </div>
 
             <div class="col-12">
-                <q-input filled bg-color="grey-4" v-model="local.address" label="Business Address *"
-                    :rules="[required]" />
+                <q-input v-bind="fieldUi" v-model="local.address" label="Business Address *" :rules="[required]" />
             </div>
 
             <div class="col-12 col-md-4">
-                <q-input filled bg-color="grey-4" v-model="local.city" label="City *" :rules="[required]" />
+                <q-input v-bind="fieldUi" v-model="local.city" label="City *" :rules="[required]" />
             </div>
             <div class="col-6 col-md-3">
-                <q-select filled bg-color="grey-4" v-model="local.state" :options="stateOptions" label="State *"
-                    emit-value map-options :rules="[required]" />
+                <q-select v-bind="fieldUi" v-model="local.state" :options="stateOptions" label="State *" emit-value
+                    map-options :rules="[required]" />
             </div>
             <div class="col-6 col-md-3">
-                <q-input filled bg-color="grey-4" v-model="local.zip" label="ZIP *" mask="#####-####" fill-mask
+                <q-input v-bind="fieldUi" v-model="local.zip" label="ZIP *" mask="#####" fill-mask
                     :rules="[required, zipRule]" />
             </div>
             <div class="col-12 col-md-2">
-                <q-input filled bg-color="grey-4" v-model="local.county" label="County" />
+                <q-input v-bind="fieldUi" v-model="local.country" label="Country" />
             </div>
         </div>
 
@@ -94,78 +116,61 @@ async function onNext() {
             @update:model-value="val => val && (local.mailing ??= { address: '', city: '', state: '', zip: '' })" />
         <div v-if="local.mailingDifferent" class="row q-col-gutter-md q-mt-none">
             <div class="col-12">
-                <q-input filled bg-color="grey-4" v-model="(local.mailing!.address)" label="Mailing Street" />
+                <q-input v-bind="fieldUi" v-model="(local.mailing!.address)" label="Mailing Street" />
             </div>
             <div class="col-12 col-md-5">
-                <q-input filled bg-color="grey-4" v-model="(local.mailing!.city)" label="Mailing City" />
+                <q-input v-bind="fieldUi" v-model="(local.mailing!.city)" label="Mailing City" />
             </div>
             <div class="col-6 col-md-3">
-                <q-select filled bg-color="grey-4" v-model="(local.mailing!.state)" :options="stateOptions"
+                <q-select v-bind="fieldUi" v-model="(local.mailing!.state)" :options="stateOptions"
                     label="Mailing State" emit-value map-options />
             </div>
             <div class="col-6 col-md-4">
-                <q-input filled bg-color="grey-4" v-model="(local.mailing!.zip)" label="Mailing ZIP" mask="#####-####"
-                    fill-mask />
+                <q-input v-bind="fieldUi" v-model="(local.mailing!.zip)" label="Mailing ZIP" mask="#####" fill-mask />
             </div>
         </div>
 
         <!-- Business meta -->
         <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
-                <q-input filled bg-color="grey-4" v-model="local.primaryBusiness" label="Primary Type of Business" />
+                <q-input v-bind="fieldUi" v-model="local.primaryBusiness" label="Primary Type of Business" />
             </div>
             <div class="col-12 col-md-4">
-                <q-select filled bg-color="grey-4" v-model="local.entityType"
+                <q-select v-bind="fieldUi" v-model="local.entityType"
                     :options="['Proprietorship', 'Partnership', 'Corporation', 'Branch']" label="Entity Type *"
                     :rules="[required]" />
             </div>
             <div class="col-12 col-md-4">
-                <q-select filled bg-color="grey-4" v-model="local.stateOfIncorp" :options="stateOptions"
+                <q-select v-bind="fieldUi" v-model="local.stateOfIncorp" :options="stateOptions"
                     label="State of Incorporation/Registration" emit-value map-options />
             </div>
             <!-- <div class="col-12 col-md-3">
-                <q-input filled bg-color="grey-4" v-model="local.yearsInBusiness" label="Years in Business"
+                <q-input v-bind="fieldUi" v-model="local.yearsInBusiness" label="Years in Business"
                     type="number" min="0" />
             </div> -->
         </div>
 
         <!-- Contacts -->
         <div class="q-gutter-sm">
-            <div class="text-subtitle2">Contacts</div>
-            <div class="row q-col-gutter-md">
-                <div class="col-12 col-md-4">
-                    <q-card flat bordered>
-                        <q-card-section class="text-bold">Main Contact</q-card-section>
-                        <q-card-section class="q-gutter-sm">
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[0]!.name" label="Name" />
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[0]!.title" label="Title" />
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[0]!.email" label="Email"
-                                type="email" />
-                        </q-card-section>
-                    </q-card>
-                </div>
-                <div class="col-12 col-md-4">
-                    <q-card flat bordered>
-                        <q-card-section class="text-bold">Accounting Contact</q-card-section>
-                        <q-card-section class="q-gutter-sm">
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[1]!.name" label="Name" />
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[1]!.title" label="Title" />
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[1]!.email" label="Email"
-                                type="email" />
-                        </q-card-section>
-                    </q-card>
-                </div>
-                <div class="col-12 col-md-4">
-                    <q-card flat bordered>
-                        <q-card-section class="text-bold">Additional Contact</q-card-section>
-                        <q-card-section class="q-gutter-sm">
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[2]!.name" label="Name" />
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[2]!.title" label="Title" />
-                            <q-input filled bg-color="grey-4" v-model="local.contacts[2]!.email" label="Email"
-                                type="email" />
-                        </q-card-section>
-                    </q-card>
-                </div>
+            <div class="row items-center justify-between q-mb-sm">
+                <div class="text-subtitle2">Contacts</div>
+                <q-btn color="primary" flat icon="add" label="Add contact" @click="addContact" />
+            </div>
+
+            <div v-for="(c, i) in local.contacts" :key="i" class="q-mb-md">
+                <q-card flat bordered class="q-pa-sm">
+                    <q-card-section class="text-bold q-pb-sm">{{ contactLabel(i) }}</q-card-section>
+                    <q-card-section class="q-gutter-sm">
+                        <q-input v-bind="fieldUi" v-model="c.name" label="Name *" :rules="[required]" />
+                        <q-input v-bind="fieldUi" v-model="c.title" label="Title *" :rules="[required]" />
+                        <q-input v-bind="fieldUi" v-model="c.email" label="Email *" type="email"
+                            :rules="[required, emailRule]" />
+                        <div class="q-mt-xs">
+                            <q-btn color="negative" flat icon="delete" label="Remove contact"
+                                :disable="local.contacts.length <= 1" @click="removeContact(i)" />
+                        </div>
+                    </q-card-section>
+                </q-card>
             </div>
         </div>
 
@@ -173,9 +178,9 @@ async function onNext() {
             <div class="col-12 col-md-6">
                 <q-toggle v-model="local.requestLineOfCredit" label="Requesting a line of credit?" />
             </div>
-            <!-- <div class="col-12 col-md-6">
+            <div class="col-12 col-md-6">
                 <q-toggle v-model="local.requestTaxExempt" label="Requesting tax exemption?" />
-            </div> -->
+            </div>
         </div>
 
         <q-btn color="primary" label="Next" @click="onNext" class="q-mt-md" />

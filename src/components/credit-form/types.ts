@@ -3,7 +3,7 @@ export type Address = {
     city: string
     state: string
     zip: string
-    county?: string
+    country?: string
 }
 
 
@@ -56,10 +56,14 @@ export type ResaleCertificate = {
     effectiveDate?: { day: number; month: number; year: number }
     purchaserName?: string
     purchaserAddress?: string
-    purchaserCityStateZip?: string
+    purchaserCity?: string
+    purchaserState?: string
+    purchaserZip?: string
     signatureName?: string
     signatureTitle?: string
     signatureDate?: string
+    resale?: boolean
+    incorporating?: boolean
 }
 
 export type Signer = {
@@ -81,11 +85,12 @@ export type CreditForm = {
     city: string
     state: string
     zip: string
-    county?: string
+    country?: string
     mailingDifferent?: boolean
     mailing?: Address
     entityType: 'Proprietorship' | 'Partnership' | 'Corporation' | 'Branch'
     primaryBusiness?: string
+    customerNumber?: string
     stateOfIncorp?: string
     yearsInBusiness?: string
     contacts: Contact[]

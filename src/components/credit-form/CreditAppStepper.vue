@@ -3,12 +3,8 @@ import { ref, computed, type Component } from 'vue'
 import { useCreditForm } from './useCreditForm'
 import {
     BusinessInfoStep,
-    OwnersStep,
     CreditRequestStep,
-    BankReferenceStep,
-    SupplierReferencesStep,
-    ResaleStep,
-    NYStep,
+    TaxExemptionStep,
     SignatureStep,
     ReviewStep
 } from './steps'
@@ -19,11 +15,7 @@ const { form } = useCreditForm()
 type StepId =
     | 'business'
     | 'credit'
-    | 'owners'
-    | 'bank'
-    | 'trade'
-    | 'resale'
-    | 'ny'
+    | 'tax'
     | 'sign'
     | 'review'
 
@@ -31,33 +23,17 @@ type StepDef = {
     id: StepId
     title: string
     component: Component        // ✅ instead of `any`
-    show?: (f: CreditForm) => boolean
+    icon?: string
+    show?: (f: CreditForm) => boolean,
 }
 
 // Base order (semantic)
 const allSteps: StepDef[] = [
-    { id: 'business', title: 'Business Info', component: BusinessInfoStep },
-    { id: 'credit', title: 'Credit Request', component: CreditRequestStep, show: f => !!f.requestLineOfCredit },
-    { id: 'owners', title: 'Owners & Officers', component: OwnersStep },
-    {
-        id: 'bank', title: 'Bank Reference', component: BankReferenceStep,
-        show: f => !!f.requestLineOfCredit
-    },
-    {
-        id: 'trade', title: 'Supplier References', component: SupplierReferencesStep,
-        show: f => !!f.requestLineOfCredit
-    },
-    { id: 'sign', title: 'Sign & Consent', component: SignatureStep },
-    { id: 'review', title: 'Review & Submit', component: ReviewStep },
-    // Conditional tails
-    {
-        id: 'resale', title: 'Resale/Exemption', component: ResaleStep,
-        show: f => !!f.isResale && (!f.exemptStates?.includes('NY'))
-    },
-    {
-        id: 'ny', title: 'NY ST-120', component: NYStep,
-        show: f => !!f.isResale && f.exemptStates?.includes('NY')
-    }
+    { id: 'business', title: 'Business Info', component: BusinessInfoStep, icon: "apartment" },
+    { id: 'credit', title: 'Credit Request', component: CreditRequestStep, show: f => !!f.requestLineOfCredit, icon: 'request_quote' },
+    { id: 'tax', title: 'Tax Exemption', component: TaxExemptionStep, show: f => !!f.requestTaxExempt, icon: 'receipt_long' },
+    { id: 'sign', title: 'Sign & Consent', component: SignatureStep, icon: "draw" },
+    { id: 'review', title: 'Review & Submit', component: ReviewStep, icon: "fact_check" },
 ]
 
 // Filtered, in order, based on current form state
@@ -87,7 +63,7 @@ function back() {
         <!-- v-model is the step ID -->
         <q-stepper v-model="current" animated color="primary" header-class="bg-grey-2 q-pa-sm rounded-borders">
             <template v-for="(s, i) in steps" :key="s.id">
-                <q-step :name="s.id" :done="i < currentIndex" :title="s.title">
+                <q-step :name="s.id" :done="i < currentIndex" :title="s.title" :icon="s.icon">
                     <component :is="s.component" v-model="form" @next="next" @back="back" />
                 </q-step>
             </template>
