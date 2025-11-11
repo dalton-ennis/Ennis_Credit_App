@@ -5,13 +5,12 @@ import { useQuasar } from 'quasar'
 import type { CreditForm } from '../types'
 
 const props = defineProps<{ modelValue: CreditForm }>()
-const emit = defineEmits(['update:modelValue', 'back', 'next'])
 
 const $q = useQuasar()
 
 /** Config **/
 const DOCUSIGN_TEMPLATE_ID = 'f11e722d-9920-4eaf-9de6-ef0279ce22d7'
-const API_BASE = import.meta.env.VITE_BE_ENDPOINT ?? 'https://localhost:7009' // adjust if different
+const API_BASE = import.meta.env.VITE_BE_ENDPOINT ?? 'https://localhost:7009'
 
 /** UI state **/
 const loading = ref(false)
@@ -30,7 +29,8 @@ const dsFields = computed(() => {
         companyCity: f.city || '',
         companyState: f.state || '',
         companyZip: f.zip || '',
-        companyCountry: country
+        companyCountry: country,
+        companyPhone: f.phone || ''
     }
 })
 
@@ -91,13 +91,6 @@ onMounted(async () => {
 
 <template>
     <div class="q-gutter-md">
-        <div class="row q-gutter-sm q-mb-sm">
-            <q-btn color="secondary" label="Back" @click="emit('back')" />
-            <q-space />
-            <!-- Optional: allow proceeding after signing is completed (you can also wire DS event to auto-next) -->
-            <q-btn :disable="!signingUrl" color="primary" label="Next" @click="emit('next')" />
-        </div>
-
         <q-card flat bordered class="rounded-borders">
             <q-card-section>
                 <div class="text-subtitle1 q-mb-sm">Sign & Consent</div>

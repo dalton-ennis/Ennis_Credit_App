@@ -68,6 +68,9 @@ async function onNext() {
 }
 function onBack() { emit('back') }
 
+async function validate() { return await formRef.value?.validate() }
+defineExpose({ validate })
+
 function ensureDefaults() {
   const today = new Date()
   const todayMonth = today.getMonth() + 1 // Jan = 0

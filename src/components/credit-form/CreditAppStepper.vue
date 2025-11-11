@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, type Component } from 'vue'
-import { useCreditForm } from './useCreditForm'
+import { ref, computed, watch, type Component, type ComponentPublicInstance } from 'vue'
 import {
     BusinessInfoStep,
     CreditRequestStep,
@@ -9,8 +8,14 @@ import {
     ReviewStep
 } from './steps'
 import type { CreditForm } from './types'
+import { useWizardStore } from 'src/stores/wizard'
 
-const { form } = useCreditForm()
+const props = defineProps<{ modelValue: CreditForm }>()
+const emit = defineEmits(['update:modelValue'])
+const form = computed({
+    get: () => props.modelValue,
+    set: (v: CreditForm) => emit('update:modelValue', v)
+})
 
 type StepId =
     | 'business'
@@ -35,7 +40,9 @@ const allSteps: StepDef[] = [
     { id: 'sign', title: 'Sign & Consent', component: SignatureStep, icon: "draw" },
     { id: 'review', title: 'Review & Submit', component: ReviewStep, icon: "fact_check" },
 ]
-
+interface StepComponent extends ComponentPublicInstance {
+    validate?: () => Promise<boolean>
+}
 // Filtered, in order, based on current form state
 const steps = computed(() =>
     allSteps.filter(s => (s.show ? s.show(form.value) : true))
@@ -43,6 +50,9 @@ const steps = computed(() =>
 
 // Current step is an ID, not a number
 const current = ref<StepId>('business')
+const wizard = useWizardStore()
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+watch(current, (v) => wizard.setCurrent(v as any), { immediate: true })
 
 // For :done states and navigation
 const currentIndex = computed(() => steps.value.findIndex(s => s.id === current.value))
@@ -56,6 +66,23 @@ function back() {
     const i = currentIndex.value
     if (i > 0) current.value = steps.value[i - 1]!.id
 }
+
+const stepRefs: Record<string, StepComponent | null> = {}
+
+function setStepRef(id: StepId, el: StepComponent | null) {
+    if (el) stepRefs[id] = el
+}
+
+async function nextValidated() {
+    const inst = stepRefs[current.value as string]
+    if (inst && typeof inst.validate === 'function') {
+        const ok = await inst.validate()
+        if (!ok) return
+    }
+    next()
+}
+
+defineExpose({ next, back, current, nextValidated })
 </script>
 
 <template>
@@ -64,7 +91,8 @@ function back() {
         <q-stepper v-model="current" animated color="primary" header-class="bg-grey-2 q-pa-sm rounded-borders">
             <template v-for="(s, i) in steps" :key="s.id">
                 <q-step :name="s.id" :done="i < currentIndex" :title="s.title" :icon="s.icon">
-                    <component :is="s.component" v-model="form" @next="next" @back="back" />
+                    <component :is="s.component" v-model="form" @next="next" @back="back"
+                        :ref="(el: ComponentPublicInstance | null) => setStepRef(s.id, el)" />
                 </q-step>
             </template>
         </q-stepper>

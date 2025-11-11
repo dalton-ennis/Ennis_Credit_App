@@ -34,7 +34,8 @@ function onSubmit() { emit('submit') }
                     </div>
                     <div class="col-12 col-md-4"><q-input v-bind="fieldUi" :model-value="f.city" label="City" /></div>
                     <div class="col-6 col-md-2"><q-input v-bind="fieldUi" :model-value="f.state" label="State" /></div>
-                    <div class="col-6 col-md-2"><q-input v-bind="fieldUi" :model-value="f.zip" label="Zip" /></div>
+                    <div class="col-6 col-md-2"><q-input v-bind="fieldUi" :model-value="f.zip" label="Postal Code" />
+                    </div>
                     <div class="col-12 col-md-4"><q-input v-bind="fieldUi" :model-value="f.country" label="Country" />
                     </div>
                 </div>
@@ -49,7 +50,7 @@ function onSubmit() { emit('submit') }
                         <div class="col-6 col-md-3"><q-input v-bind="fieldUi" :model-value="f.mailing?.state"
                                 label="State" /></div>
                         <div class="col-6 col-md-4"><q-input v-bind="fieldUi" :model-value="f.mailing?.zip"
-                                label="Zip" /></div>
+                                label="Postal Code" /></div>
                     </div>
                 </div>
 
@@ -111,7 +112,7 @@ function onSubmit() { emit('submit') }
                             <div class="col-6 col-md-3"><q-input v-bind="fieldUi" :model-value="o.homeAddress?.state"
                                     label="State" /></div>
                             <div class="col-6 col-md-4"><q-input v-bind="fieldUi" :model-value="o.homeAddress?.zip"
-                                    label="Zip" /></div>
+                                    label="Postal Code" /></div>
                         </div>
                     </div>
                 </div>
@@ -136,7 +137,7 @@ function onSubmit() { emit('submit') }
                         <div class="col-6 col-md-3"><q-input v-bind="fieldUi" :model-value="f.bank?.address?.state"
                                 label="State" /></div>
                         <div class="col-6 col-md-4"><q-input v-bind="fieldUi" :model-value="f.bank?.address?.zip"
-                                label="Zip" /></div>
+                                label="Postal Code" /></div>
                     </div>
                 </div>
 
@@ -162,7 +163,7 @@ function onSubmit() { emit('submit') }
                             <div class="col-6 col-md-3"><q-input v-bind="fieldUi" :model-value="r.address?.state"
                                     label="State" /></div>
                             <div class="col-6 col-md-4"><q-input v-bind="fieldUi" :model-value="r.address?.zip"
-                                    label="Zip" /></div>
+                                    label="Postal Code" /></div>
                         </div>
                     </div>
                 </div>

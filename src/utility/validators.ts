@@ -32,6 +32,10 @@ export const faxRule = (v: string) =>
 export const zipRule = (v: string) =>
     (/^\d{5}(-\d{4})?$/.test(v || '') ? true : 'ZIP 12345 or 12345-6789')
 
+// Canadian postal code rule: A1A 1A1 (case-insensitive, optional space)
+export const canadianPostalRule = (v: string) =>
+    (/^[A-Za-z]\d[A-Za-z][ ]?\d[A-Za-z]\d$/.test((v || '').trim()) ? true : 'Postal code A1A 1A1')
+
 export const ssnRule = (v: string) =>
     (/^\d{3}-\d{2}-\d{4}$/.test(v || '') ? true : 'SSN 000-00-0000')
 

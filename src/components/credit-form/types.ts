@@ -81,6 +81,7 @@ export type CreditForm = {
     phone: string
     fax?: string
     email: string
+    ein: string
     address: string
     city: string
     state: string
@@ -88,12 +89,13 @@ export type CreditForm = {
     country?: string
     mailingDifferent?: boolean
     mailing?: Address
-    entityType: 'Proprietorship' | 'Partnership' | 'Corporation' | 'Branch'
+    entityType: 'Proprietorship' | 'Partnership' | 'Corporation' | 'LLC'
     primaryBusiness?: string
     customerNumber?: string
     stateOfIncorp?: string
     yearsInBusiness?: string
     contacts: Contact[]
+    invoiceEmail?: string
 
     // branching
     requestLineOfCredit: boolean
@@ -102,6 +104,7 @@ export type CreditForm = {
     // credit app sections
     creditAmount?: number | null
     poRequired?: boolean
+    creditDisclosureAck?: boolean
     owners: Owner[]
     bank?: Bank
     tradeRefs: TradeRef[]   // expect 3

@@ -19,7 +19,39 @@ const US_STATES: USState[] = [
     { code: 'VA', name: 'Virginia' }, { code: 'WA', name: 'Washington', required: true }, { code: 'WV', name: 'West Virginia' },
     { code: 'WI', name: 'Wisconsin' }, { code: 'WY', name: 'Wyoming' }
 ]
+
+const countrys: USState[] = [
+    {
+        code: 'US',
+        name: 'United States'
+    },
+    {
+        code: 'CA',
+        name: 'Canada'
+    }
+]
+// Canada Provinces and Territories
+interface CAProvince { code: string; name: string }
+const CA_PROVINCES: CAProvince[] = [
+  { code: 'AB', name: 'Alberta' },
+  { code: 'BC', name: 'British Columbia' },
+  { code: 'MB', name: 'Manitoba' },
+  { code: 'NB', name: 'New Brunswick' },
+  { code: 'NL', name: 'Newfoundland and Labrador' },
+  { code: 'NS', name: 'Nova Scotia' },
+  { code: 'NT', name: 'Northwest Territories' },
+  { code: 'NU', name: 'Nunavut' },
+  { code: 'ON', name: 'Ontario' },
+  { code: 'PE', name: 'Prince Edward Island' },
+  { code: 'QC', name: 'Quebec' },
+  { code: 'SK', name: 'Saskatchewan' },
+  { code: 'YT', name: 'Yukon' }
+]
+
 export const stateOptions = US_STATES.map(s => ({ label: s.name, value: s.code }))
+export const provinceOptions = CA_PROVINCES.map(p => ({ label: p.name, value: p.code }))
+
+export const countryOptions = countrys.map(s => ({ label: s.name, value: s.code }))
 
 export const fieldUi = { filled: true, 'bg-color': 'grey-4', dense: true } as const
 

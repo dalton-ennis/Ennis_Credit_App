@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
 import type { CreditForm, Address } from '../types'
-import { stateOptions } from '../utilities'
-import { required, emailRule, zipRule, phoneRule } from 'src/utility/validators';
+import { countryOptions, stateOptions, provinceOptions } from '../utilities'
+import { required, emailRule, zipRule, phoneRule, canadianPostalRule } from 'src/utility/validators';
 import { fieldUi } from '../utilities';
 
 const props = defineProps<{ modelValue: CreditForm }>()
@@ -45,13 +45,20 @@ watch(
 /** Validation rules for required fields (Business step) **/
 const formRef = ref()
 
-async function onNext() {
-    const ok = await formRef.value?.validate()
-    if (ok) emit('next')
+// async function onNext() {
+//     const ok = await formRef.value?.validate()
+//     if (ok) emit('next')
+// }
+
+async function validate() {
+    return await formRef.value?.validate()
 }
+defineExpose({ validate })
 
 function addContact() {
-    local.value.contacts.push({ role: 'additional', name: '', title: '', email: '' })
+    if (local.value.contacts.length < 5) {
+        local.value.contacts.push({ role: 'additional', name: '', title: '', email: '' })
+    }
 }
 function removeContact(i: number) {
     if (local.value.contacts.length > 1) {
@@ -62,17 +69,39 @@ function contactLabel(i: number) {
     return i === 0 ? 'Main Contact' : `Additional Contact ${i}`
 }
 
+// Country-driven UI behavior
+const isCA = computed(() => local.value.country === 'CA')
+const regionOptions = computed(() => isCA.value ? provinceOptions : stateOptions)
+const regionLabel = computed(() => isCA.value ? 'Province/Territory *' : 'State *')
+const postalLabel = computed(() => isCA.value ? 'Postal Code *' : 'ZIP *')
+const postalRules = computed(() => isCA.value ? [required, canadianPostalRule] : [required, zipRule])
+
+watch(() => local.value.country, () => {
+    // Clear region/postal when country changes to prevent invalid combos
+    local.value.state = ''
+    local.value.zip = ''
+    if (local.value.mailing) {
+        local.value.mailing.state = ''
+        local.value.mailing.zip = ''
+    }
+})
+
 </script>
 
 <template>
     <q-form ref="formRef" greedy class="q-gutter-lg">
         <!-- Core business identity -->
         <div class="row q-col-gutter-md">
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
                 <q-input v-bind="fieldUi" v-model="local.companyName" label="Company Name *" :rules="[required]" />
             </div>
 
-            <div class="col-12 col-md-6">
+            <div class="col-12 col-md-4">
+                <q-input v-bind="fieldUi" v-model="local.ein" label="EIN *" :rules="[required]" />
+            </div>
+
+
+            <div class="col-12 col-md-4">
                 <q-input v-bind="fieldUi" v-model="local.dbaName" label="DBA" />
             </div>
 
@@ -90,7 +119,12 @@ function contactLabel(i: number) {
                     :rules="[required, emailRule]" />
             </div>
 
-            <div class="col-12">
+
+            <div class="col-12 col-md-2">
+                <q-select v-bind="fieldUi" v-model="local.country" label="Country *" :options="countryOptions" emit-value
+                    map-options :rules="[required]" />
+            </div>
+            <div class="col-12 col-md-10">
                 <q-input v-bind="fieldUi" v-model="local.address" label="Business Address *" :rules="[required]" />
             </div>
 
@@ -98,15 +132,12 @@ function contactLabel(i: number) {
                 <q-input v-bind="fieldUi" v-model="local.city" label="City *" :rules="[required]" />
             </div>
             <div class="col-6 col-md-3">
-                <q-select v-bind="fieldUi" v-model="local.state" :options="stateOptions" label="State *" emit-value
-                    map-options :rules="[required]" />
+                <q-select v-bind="fieldUi" v-model="local.state" :options="regionOptions" :label="regionLabel" emit-value
+                    map-options :rules="[required]" :disable="!local.country" />
             </div>
             <div class="col-6 col-md-3">
-                <q-input v-bind="fieldUi" v-model="local.zip" label="ZIP *" mask="#####" fill-mask
-                    :rules="[required, zipRule]" />
-            </div>
-            <div class="col-12 col-md-2">
-                <q-input v-bind="fieldUi" v-model="local.country" label="Country" />
+                <q-input v-bind="fieldUi" v-model="local.zip" :label="postalLabel"
+                    :mask="isCA ? undefined : '#####'" :fill-mask="!isCA" :rules="postalRules" :disable="!local.country" />
             </div>
         </div>
 
@@ -122,11 +153,12 @@ function contactLabel(i: number) {
                 <q-input v-bind="fieldUi" v-model="(local.mailing!.city)" label="Mailing City" />
             </div>
             <div class="col-6 col-md-3">
-                <q-select v-bind="fieldUi" v-model="(local.mailing!.state)" :options="stateOptions"
-                    label="Mailing State" emit-value map-options />
+                <q-select v-bind="fieldUi" v-model="(local.mailing!.state)" :options="regionOptions"
+                    :label="isCA ? 'Mailing Province/Territory' : 'Mailing State'" emit-value map-options :disable="!local.country" />
             </div>
             <div class="col-6 col-md-4">
-                <q-input v-bind="fieldUi" v-model="(local.mailing!.zip)" label="Mailing ZIP" mask="#####" fill-mask />
+                <q-input v-bind="fieldUi" v-model="(local.mailing!.zip)" :label="isCA ? 'Mailing Postal Code' : 'Mailing ZIP'"
+                    :mask="isCA ? undefined : '#####'" :fill-mask="!isCA" :disable="!local.country" />
             </div>
         </div>
 
@@ -137,12 +169,12 @@ function contactLabel(i: number) {
             </div>
             <div class="col-12 col-md-4">
                 <q-select v-bind="fieldUi" v-model="local.entityType"
-                    :options="['Proprietorship', 'Partnership', 'Corporation', 'Branch']" label="Entity Type *"
+                    :options="['Proprietorship', 'Partnership', 'Corporation', 'LLC']" label="Entity Type *"
                     :rules="[required]" />
             </div>
             <div class="col-12 col-md-4">
-                <q-select v-bind="fieldUi" v-model="local.stateOfIncorp" :options="stateOptions"
-                    label="State of Incorporation/Registration" emit-value map-options />
+                <q-select v-bind="fieldUi" v-model="local.stateOfIncorp" :options="regionOptions"
+                    :label="isCA ? 'Province/Territory of Incorporation/Registration' : 'State of Incorporation/Registration'" emit-value map-options />
             </div>
             <!-- <div class="col-12 col-md-3">
                 <q-input v-bind="fieldUi" v-model="local.yearsInBusiness" label="Years in Business"
@@ -154,7 +186,7 @@ function contactLabel(i: number) {
         <div class="q-gutter-sm">
             <div class="row items-center justify-between q-mb-sm">
                 <div class="text-subtitle2">Contacts</div>
-                <q-btn color="primary" flat icon="add" label="Add contact" @click="addContact" />
+                <q-btn color="primary" flat icon="add" label="Add contact" @click="addContact" :disable="local.contacts.length >= 5" />
             </div>
 
             <div v-for="(c, i) in local.contacts" :key="i" class="q-mb-md">
@@ -174,16 +206,14 @@ function contactLabel(i: number) {
             </div>
         </div>
 
-        <div class="row q-col-gutter-md q-mb-md">
+        <!-- Optional invoice email -->
+        <div class="row q-col-gutter-md q-mt-md">
             <div class="col-12 col-md-6">
-                <q-toggle v-model="local.requestLineOfCredit" label="Requesting a line of credit?" />
-            </div>
-            <div class="col-12 col-md-6">
-                <q-toggle v-model="local.requestTaxExempt" label="Requesting tax exemption?" />
+                <q-input v-bind="fieldUi" v-model="local.invoiceEmail" label="Invoice Email (optional)" type="email"
+                    :rules="[v => !v || emailRule(v)]" hint="If provided, invoices will be emailed here." />
             </div>
         </div>
 
-        <q-btn color="primary" label="Next" @click="onNext" class="q-mt-md" />
     </q-form>
 </template>
 
