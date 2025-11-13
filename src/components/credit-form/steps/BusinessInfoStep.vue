@@ -8,9 +8,10 @@ import { fieldUi } from '../utilities';
 const props = defineProps<{ modelValue: CreditForm }>()
 const emit = defineEmits(['update:modelValue', 'next'])
 
-const emptyAddr = (): Address => ({ address: '', city: '', state: '', zip: '' })
+const emptyAddr = (country = ''): Address => ({ address: '', city: '', state: '', zip: '', country })
 const ensureMailing = (form: CreditForm) => {
-    if (form.mailingDifferent && !form.mailing) form.mailing = emptyAddr()
+    if (form.mailingDifferent && !form.mailing) form.mailing = emptyAddr(form.country)
+    if (form.mailing && !form.mailing.country) form.mailing.country = form.country || form.mailing.country || ''
 }
 
 const ensureContacts = (form: CreditForm) => {
@@ -22,24 +23,64 @@ const ensureContacts = (form: CreditForm) => {
     }
 }
 
-const local = ref<CreditForm>({ ...props.modelValue })
+const cloneForm = (form: CreditForm): CreditForm => {
+    const copy: CreditForm = {
+        ...form,
+        contacts: Array.isArray(form.contacts) ? form.contacts.map(c => ({ ...c })) : [],
+    }
+    if (form.mailing) {
+        copy.mailing = { ...form.mailing }
+    } else {
+        delete copy.mailing
+    }
+    return copy
+}
+
+const local = ref<CreditForm>(cloneForm(props.modelValue))
 
 onMounted(() => {
     ensureMailing(local.value)
     ensureContacts(local.value)
 })
 
+const syncToParent = (form: CreditForm): CreditForm => {
+    const copy: CreditForm = {
+        ...form,
+        contacts: Array.isArray(form.contacts) ? form.contacts.map(c => ({ ...c })) : [],
+    }
+    if (form.mailingDifferent) {
+        copy.mailing = form.mailing ? { ...form.mailing } : emptyAddr(form.country)
+    } else if (form.mailing) {
+        copy.mailing = { ...form.mailing }
+    } else {
+        delete copy.mailing
+    }
+    return copy
+}
+
+let skipNextEmit = false
+
 watch(
     local,
     (val) => {
-        const cloned: CreditForm = {
-            ...val,
-            mailing: val.mailing ?? emptyAddr(),
-            contacts: Array.isArray(val.contacts) ? val.contacts.map(c => ({ ...c })) : [],
+        if (skipNextEmit) {
+            skipNextEmit = false
+            return
         }
-        emit('update:modelValue', cloned)
+        emit('update:modelValue', syncToParent(val))
     },
     { deep: true }
+)
+
+watch(
+    () => props.modelValue,
+    (val) => {
+        skipNextEmit = true
+        local.value = cloneForm(val)
+        ensureMailing(local.value)
+        ensureContacts(local.value)
+    },
+    { deep: false }
 )
 
 /** Validation rules for required fields (Business step) **/
@@ -121,8 +162,8 @@ watch(() => local.value.country, () => {
 
 
             <div class="col-12 col-md-2">
-                <q-select v-bind="fieldUi" v-model="local.country" label="Country *" :options="countryOptions" emit-value
-                    map-options :rules="[required]" />
+                <q-select v-bind="fieldUi" v-model="local.country" label="Country *" :options="countryOptions"
+                    emit-value map-options :rules="[required]" />
             </div>
             <div class="col-12 col-md-10">
                 <q-input v-bind="fieldUi" v-model="local.address" label="Business Address *" :rules="[required]" />
@@ -132,12 +173,12 @@ watch(() => local.value.country, () => {
                 <q-input v-bind="fieldUi" v-model="local.city" label="City *" :rules="[required]" />
             </div>
             <div class="col-6 col-md-3">
-                <q-select v-bind="fieldUi" v-model="local.state" :options="regionOptions" :label="regionLabel" emit-value
-                    map-options :rules="[required]" :disable="!local.country" />
+                <q-select v-bind="fieldUi" v-model="local.state" :options="regionOptions" :label="regionLabel"
+                    emit-value map-options :rules="[required]" :disable="!local.country" />
             </div>
             <div class="col-6 col-md-3">
-                <q-input v-bind="fieldUi" v-model="local.zip" :label="postalLabel"
-                    :mask="isCA ? undefined : '#####'" :fill-mask="!isCA" :rules="postalRules" :disable="!local.country" />
+                <q-input v-bind="fieldUi" v-model="local.zip" :label="postalLabel" :mask="isCA ? undefined : '#####'"
+                    :fill-mask="!isCA" :rules="postalRules" :disable="!local.country" />
             </div>
         </div>
 
@@ -154,11 +195,13 @@ watch(() => local.value.country, () => {
             </div>
             <div class="col-6 col-md-3">
                 <q-select v-bind="fieldUi" v-model="(local.mailing!.state)" :options="regionOptions"
-                    :label="isCA ? 'Mailing Province/Territory' : 'Mailing State'" emit-value map-options :disable="!local.country" />
+                    :label="isCA ? 'Mailing Province/Territory' : 'Mailing State'" emit-value map-options
+                    :disable="!local.country" />
             </div>
             <div class="col-6 col-md-4">
-                <q-input v-bind="fieldUi" v-model="(local.mailing!.zip)" :label="isCA ? 'Mailing Postal Code' : 'Mailing ZIP'"
-                    :mask="isCA ? undefined : '#####'" :fill-mask="!isCA" :disable="!local.country" />
+                <q-input v-bind="fieldUi" v-model="(local.mailing!.zip)"
+                    :label="isCA ? 'Mailing Postal Code' : 'Mailing ZIP'" :mask="isCA ? undefined : '#####'"
+                    :fill-mask="!isCA" :disable="!local.country" />
             </div>
         </div>
 
@@ -174,7 +217,8 @@ watch(() => local.value.country, () => {
             </div>
             <div class="col-12 col-md-4">
                 <q-select v-bind="fieldUi" v-model="local.stateOfIncorp" :options="regionOptions"
-                    :label="isCA ? 'Province/Territory of Incorporation/Registration' : 'State of Incorporation/Registration'" emit-value map-options />
+                    :label="isCA ? 'Province/Territory of Incorporation/Registration' : 'State of Incorporation/Registration'"
+                    emit-value map-options />
             </div>
             <!-- <div class="col-12 col-md-3">
                 <q-input v-bind="fieldUi" v-model="local.yearsInBusiness" label="Years in Business"
@@ -186,7 +230,8 @@ watch(() => local.value.country, () => {
         <div class="q-gutter-sm">
             <div class="row items-center justify-between q-mb-sm">
                 <div class="text-subtitle2">Contacts</div>
-                <q-btn color="primary" flat icon="add" label="Add contact" @click="addContact" :disable="local.contacts.length >= 5" />
+                <q-btn color="primary" flat icon="add" label="Add contact" @click="addContact"
+                    :disable="local.contacts.length >= 5" />
             </div>
 
             <div v-for="(c, i) in local.contacts" :key="i" class="q-mb-md">
@@ -208,9 +253,18 @@ watch(() => local.value.country, () => {
 
         <!-- Optional invoice email -->
         <div class="row q-col-gutter-md q-mt-md">
-            <div class="col-12 col-md-6">
-                <q-input v-bind="fieldUi" v-model="local.invoiceEmail" label="Invoice Email (optional)" type="email"
+            <div class="col-12 col-md-4">
+                <q-input v-bind="fieldUi" v-model="local.invoiceEmail" label="Invoice Email" type="email"
                     :rules="[v => !v || emailRule(v)]" hint="If provided, invoices will be emailed here." />
+            </div>
+            <div class="col-12 col-md-4">
+                <q-input v-bind="fieldUi" v-model="local.statementEmail" label="Statement Email" type="email"
+                    :rules="[v => !v || emailRule(v)]" hint="If provided, Statements will be emailed here." />
+            </div>
+            <div class="col-12 col-md-4">
+                <q-input v-bind="fieldUi" v-model="local.AcknowledgementEmail" label="Acknowledgement Email"
+                    type="email" :rules="[v => !v || emailRule(v)]"
+                    hint="If provided, Acknowledgement will be emailed here." />
             </div>
         </div>
 

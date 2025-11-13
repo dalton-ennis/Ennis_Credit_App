@@ -50,10 +50,10 @@ function onTaxChange(val: boolean) {
       </q-card-section>
       <q-separator />
       <q-card-section class="q-gutter-sm">
-        <q-toggle :model-value="form.requestLineOfCredit" @update:model-value="onLocChange"
-                  :disable="lockAll" label="Request line of credit" />
-        <q-toggle :model-value="form.requestTaxExempt" @update:model-value="onTaxChange"
-                  :disable="lockAll" label="Request tax exemption" />
+        <q-toggle :model-value="form.requestLineOfCredit" @update:model-value="onLocChange" :disable="lockAll"
+          label="Request line of credit" />
+        <q-toggle :model-value="form.requestTaxExempt" @update:model-value="onTaxChange" :disable="lockAll"
+          label="Request tax exemption" />
       </q-card-section>
       <q-separator />
       <q-card-section class="q-gutter-xs">
@@ -62,10 +62,16 @@ function onTaxChange(val: boolean) {
       </q-card-section>
     </q-card>
   </div>
-  
+
 </template>
 
 <style scoped>
-.sticky { position: sticky; top: 16px; }
-.full-width { width: 100%; }
+.sticky {
+  position: sticky;
+  top: 16px;
+}
+
+.full-width {
+  width: 100%;
+}
 </style>

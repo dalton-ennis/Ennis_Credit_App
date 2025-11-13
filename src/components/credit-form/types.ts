@@ -43,6 +43,7 @@ export type Bank = {
 export type NYSt120 = {
     purchaserName: string
     purchaserAddress: string
+    purchaserCountry?: string
     nyRegistration: string
     vendorName: string
     signerName?: string
@@ -59,6 +60,7 @@ export type ResaleCertificate = {
     purchaserCity?: string
     purchaserState?: string
     purchaserZip?: string
+    purchaserCountry?: string
     signatureName?: string
     signatureTitle?: string
     signatureDate?: string
@@ -96,6 +98,8 @@ export type CreditForm = {
     yearsInBusiness?: string
     contacts: Contact[]
     invoiceEmail?: string
+    statementEmail?: string
+    AcknowledgementEmail?: string
 
     // branching
     requestLineOfCredit: boolean
@@ -103,14 +107,12 @@ export type CreditForm = {
 
     // credit app sections
     creditAmount?: number | null
-    poRequired?: boolean
     creditDisclosureAck?: boolean
     owners: Owner[]
     bank?: Bank
     tradeRefs: TradeRef[]   // expect 3
 
     // tax exemption
-    isResale?: boolean
     exemptStates: string[]
     resaleNumbers: Record<string, string>
     resaleCertificate?: ResaleCertificate

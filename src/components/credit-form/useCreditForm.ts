@@ -1,7 +1,7 @@
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import type { Address, CreditForm } from './types'
 
-const EMPTY_ADDR = (): Address => ({ address: '', city: '', state: '', zip: '' })
+const EMPTY_ADDR = (): Address => ({ address: '', city: '', state: '', zip: '', country: '' })
 
 export function useCreditForm() {
     const form = ref<CreditForm>({
@@ -27,14 +27,15 @@ export function useCreditForm() {
         contacts: [
             { role: 'main', name: '', title: '', email: '' },
         ],
-
+        invoiceEmail: '',
+        statementEmail: '',
+        AcknowledgementEmail: '',
         // Branching
         requestLineOfCredit: false,
         requestTaxExempt: false,
 
         // Credit app
         creditAmount: null,
-        poRequired: false,
         creditDisclosureAck: false,
         owners: [{ name: '', title: '', ssn: '', homeAddress: EMPTY_ADDR() }],
         bank: {
@@ -52,7 +53,6 @@ export function useCreditForm() {
         ],
 
         // Tax exemption
-        isResale: false,
         exemptStates: [],
         resaleNumbers: {},
         resaleCertificate: {
@@ -66,6 +66,7 @@ export function useCreditForm() {
             purchaserCity: '',
             purchaserState: '',
             purchaserZip: '',
+            purchaserCountry: '',
             signatureName: '',
             signatureTitle: '',
             signatureDate: '',
@@ -73,6 +74,7 @@ export function useCreditForm() {
         nySt120: {
             purchaserName: '',
             purchaserAddress: '',
+            purchaserCountry: '',
             nyRegistration: '',
             vendorName: '',
             signerName: '',
@@ -85,9 +87,6 @@ export function useCreditForm() {
     })
 
     const step = ref(1)
-    const showResale = computed(() => !!form.value.isResale)
-    const showNY = computed(() => showResale.value && form.value.exemptStates.includes('NY'))
-
     function next() {
         step.value++
     }
@@ -96,5 +95,5 @@ export function useCreditForm() {
         step.value--
     }
 
-    return { form, step, showResale, showNY, next, back }
+    return { form, step, next, back }
 }

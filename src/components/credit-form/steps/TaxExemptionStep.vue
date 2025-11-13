@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, computed } from 'vue'
 import type { CreditForm } from '../types'
-import { stateOptions } from '../utilities'
-import { dayRule, monthRule, required, yearRule } from 'src/utility/validators'
+import { stateOptions, countryOptions, provinceOptions } from '../utilities'
+import { dayRule, monthRule, required, yearRule, zipRule, canadianPostalRule } from 'src/utility/validators'
 import type { QForm } from 'quasar'
 import { fieldUi } from '../utilities';
 
@@ -17,7 +17,7 @@ onMounted(() => {
   local.value.resaleCertificate ??= {}
   local.value.exemptStates ??= []
   local.value.resaleNumbers ??= {}
-  local.value.nySt120 ??= { purchaserName: '', purchaserAddress: '', nyRegistration: '', vendorName: '', signerName: '', signerTitle: '', signerDate: '' }
+  local.value.nySt120 ??= { purchaserName: '', purchaserAddress: '', purchaserCountry: local.value.country || '', nyRegistration: '', vendorName: '', signerName: '', signerTitle: '', signerDate: '' }
 
   // Prefill some values from business info if empty
   const rc = local.value.resaleCertificate
@@ -26,6 +26,8 @@ onMounted(() => {
   if (!rc.purchaserCity) rc.purchaserCity = local.value.city || ''
   if (!rc.purchaserState) rc.purchaserState = local.value.state || ''
   if (!rc.purchaserZip) rc.purchaserZip = local.value.zip || ''
+  if (!rc.purchaserCountry) rc.purchaserCountry = local.value.country || ''
+  if (!local.value.nySt120.purchaserCountry) local.value.nySt120.purchaserCountry = local.value.country || ''
 })
 
 // Keep parent in sync
@@ -35,6 +37,19 @@ watch(local, (val) => {
 
 const formRef = ref<QForm | null>(null)
 const showingNY = computed(() => local.value.exemptStates?.includes('NY'))
+const purchaserCountry = computed(() => local.value.resaleCertificate?.purchaserCountry || local.value.country || '')
+const purchaserIsCA = computed(() => purchaserCountry.value === 'CA')
+const purchaserRegionOptions = computed(() => purchaserIsCA.value ? provinceOptions : stateOptions)
+const purchaserRegionLabel = computed(() => purchaserIsCA.value ? 'Province/Territory *' : 'State *')
+const purchaserPostalLabel = computed(() => purchaserIsCA.value ? 'Postal Code *' : 'ZIP *')
+const purchaserPostalRules = computed(() => purchaserIsCA.value ? [required, canadianPostalRule] : [required, zipRule])
+
+watch(() => local.value.resaleCertificate?.purchaserCountry, () => {
+  if (!local.value.resaleCertificate) return
+  local.value.resaleCertificate.purchaserState = ''
+  local.value.resaleCertificate.purchaserZip = ''
+})
+
 
 // States that require in‑state resale certificate numbers (no out‑of‑state)
 const IN_STATE_ONLY = new Set(['CA', 'FL', 'HI', 'IL', 'LA', 'MD', 'MA', 'WA', 'DC'])
@@ -123,7 +138,11 @@ ensureDefaults()
         <div class="col-12 col-md-6">
           <q-input v-bind="fieldUi" v-model="local.customerNumber" label="Customer Number" />
         </div>
-        <div class="col-12">
+        <div class="col-12 col-md-4">
+          <q-select v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserCountry" label="Country *"
+            :options="countryOptions" emit-value map-options :rules="[required]" />
+        </div>
+        <div class="col-12 col-md-8">
           <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserAddress" label="Address *"
             :rules="[required]" />
         </div>
@@ -132,11 +151,13 @@ ensureDefaults()
             :rules="[required]" />
         </div>
         <div class="col-12 col-md-4">
-          <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserState" label="State *"
-            :rules="[required]" />
+          <q-select v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserState"
+            :options="purchaserRegionOptions" :label="purchaserRegionLabel" emit-value map-options :rules="[required]"
+            :disable="!local.resaleCertificate?.purchaserCountry" />
         </div>
         <div class="col-12 col-md-4">
-          <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserZip" label="Zip *" :rules="[required]" />
+          <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserZip" :label="purchaserPostalLabel"
+            :rules="purchaserPostalRules" />
         </div>
       </div>
 
@@ -249,6 +270,10 @@ ensureDefaults()
           </div>
           <div class="col-12 col-md-6">
             <q-input v-bind="fieldUi" v-model="local.nySt120.vendorName" label="Vendor Name *" :rules="[required]" />
+          </div>
+          <div class="col-12 col-md-6">
+            <q-select v-bind="fieldUi" v-model="local.nySt120.purchaserCountry" label="Purchaser Country *"
+              :options="countryOptions" emit-value map-options :rules="[required]" />
           </div>
           <div class="col-12">
             <q-input v-bind="fieldUi" v-model="local.nySt120.purchaserAddress" label="Purchaser Address *"
