@@ -7,6 +7,7 @@ import { plantTypes, isPlantCode, type PlantDetails } from 'src/utility/Utility'
 const route = useRoute()
 
 const plantDetails = ref<PlantDetails | null>(null)
+const isAdmin = ref(false)
 
 onMounted(() => {
   const p = Array.isArray(route.params.plant)
@@ -16,11 +17,27 @@ onMounted(() => {
   if (isPlantCode(p)) {
     plantDetails.value = plantTypes[p]     // safe after narrowing
   } else {
-    plantDetails.value = null
+    plantDetails.value = plantTypes['default']
   }
 })
 
 const showFaq = ref(false)
+
+function toUpperAndHyphen(str: string): string {
+  if (!str) return '';
+
+  return str
+    .split('-')
+    .map(segment => segment.toUpperCase())
+    .join('-');
+}
+
+onMounted(() => {
+  if (route.fullPath.includes('admin')) {
+    isAdmin.value = true
+  }
+})
+
 </script>
 
 
@@ -29,13 +46,19 @@ const showFaq = ref(false)
     <q-header elevated>
       <q-card>
         <q-card-section :class="plantDetails?.color">
-          <!-- <q-img :src="plantDetails.icon" /> -->
           <div class="row items-center no-wrap justify-between">
-            <div>
-              <div class="text-h5">{{ route.params.plant ?? 'Ennis' }} Customer Credit Application</div>
+            <div v-if="!isAdmin">
+              <div class="text-h5">{{ toUpperAndHyphen(route.params.plant as string) ?? 'Ennis' }} Customer Credit
+                Application</div>
               <div class="text-body2 opacity-80">Please complete all sections below.</div>
             </div>
-            <div class="row items-center">
+            <div v-else>
+              <div class="text-h5">
+                Customer Credit Application - Admin
+              </div>
+              <div class="text-body2 opacity-80">Link Generator</div>
+            </div>
+            <div v-if="!isAdmin" class="row items-center">
               <q-btn color="white" text-color="primary" unelevated label="FAQ" icon="help_outline"
                 @click="showFaq = true" />
             </div>

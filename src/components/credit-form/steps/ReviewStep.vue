@@ -198,7 +198,7 @@ function onSubmit() { emit('submit') }
                                 <div class="row q-col-gutter-md">
                                         <div class="col-12 col-md-6"><q-input v-bind="fieldUi"
                                                         :model-value="(f.exemptStates || []).join(', ')"
-                                                        label="States Exempt In" /></div>
+                                                        label="States registered in" /></div>
                                         <div class="col-12 col-md-6"><q-input v-bind="fieldUi"
                                                         :model-value="f.primaryBusiness"
                                                         label="Primary Type of Business" /></div>

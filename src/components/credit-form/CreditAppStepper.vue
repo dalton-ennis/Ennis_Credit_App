@@ -36,7 +36,7 @@ type StepDef = {
 const allSteps: StepDef[] = [
     { id: 'business', title: 'Business Info', component: BusinessInfoStep, icon: "apartment" },
     { id: 'credit', title: 'Credit Request', component: CreditRequestStep, show: f => !!f.requestLineOfCredit, icon: 'request_quote' },
-    { id: 'tax', title: 'Tax Exemption', component: TaxExemptionStep, show: f => !!f.requestTaxExempt, icon: 'receipt_long' },
+    { id: 'tax', title: 'Sales Tax Exemption', component: TaxExemptionStep, show: f => !!f.requestTaxExempt, icon: 'receipt_long' },
     { id: 'sign', title: 'Sign & Consent', component: SignatureStep, icon: "draw" },
     { id: 'review', title: 'Review & Submit', component: ReviewStep, icon: "fact_check" },
 ]

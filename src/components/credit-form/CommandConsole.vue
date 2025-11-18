@@ -53,7 +53,7 @@ function onTaxChange(val: boolean) {
         <q-toggle :model-value="form.requestLineOfCredit" @update:model-value="onLocChange" :disable="lockAll"
           label="Request line of credit" />
         <q-toggle :model-value="form.requestTaxExempt" @update:model-value="onTaxChange" :disable="lockAll"
-          label="Request tax exemption" />
+          label="Request sales tax exemption" />
       </q-card-section>
       <q-separator />
       <q-card-section class="q-gutter-xs">

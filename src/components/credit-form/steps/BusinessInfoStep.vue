@@ -36,7 +36,49 @@ const cloneForm = (form: CreditForm): CreditForm => {
     return copy
 }
 
+const primaryBusinessBaseOptions = [
+    'Print distributor',
+    'Retailer',
+    'E-commerce seller',
+    'Wholesaler or distributor',
+    'Manufacturer',
+]
+const primaryBusinessOtherLabel = 'Other'
+const primaryBusinessOptions = [...primaryBusinessBaseOptions, primaryBusinessOtherLabel]
+
+const isPredefinedPrimaryBusiness = (val?: string) =>
+    !!val && primaryBusinessBaseOptions.includes(val)
+
 const local = ref<CreditForm>(cloneForm(props.modelValue))
+
+const primaryBusinessSelection = ref('')
+const syncPrimaryBusinessSelection = () => {
+    const val = local.value.primaryBusiness || ''
+    if (!val) {
+        primaryBusinessSelection.value = ''
+    } else if (isPredefinedPrimaryBusiness(val)) {
+        primaryBusinessSelection.value = val
+    } else {
+        primaryBusinessSelection.value = primaryBusinessOtherLabel
+    }
+}
+syncPrimaryBusinessSelection()
+
+watch(primaryBusinessSelection, (val) => {
+    if (!val) {
+        local.value.primaryBusiness = ''
+        return
+    }
+    if (val === primaryBusinessOtherLabel) {
+        if (isPredefinedPrimaryBusiness(local.value.primaryBusiness)) {
+            local.value.primaryBusiness = ''
+        }
+        return
+    }
+    local.value.primaryBusiness = val
+})
+
+const isPrimaryBusinessOther = computed(() => primaryBusinessSelection.value === primaryBusinessOtherLabel)
 
 onMounted(() => {
     ensureMailing(local.value)
@@ -79,6 +121,7 @@ watch(
         local.value = cloneForm(val)
         ensureMailing(local.value)
         ensureContacts(local.value)
+        syncPrimaryBusinessSelection()
     },
     { deep: false }
 )
@@ -208,7 +251,10 @@ watch(() => local.value.country, () => {
         <!-- Business meta -->
         <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
-                <q-input v-bind="fieldUi" v-model="local.primaryBusiness" label="Primary Type of Business" />
+                <q-select v-bind="fieldUi" v-model="primaryBusinessSelection" label="Primary Type of Business"
+                    :options="primaryBusinessOptions" />
+                <q-input v-if="isPrimaryBusinessOther" class="q-mt-md" v-bind="fieldUi"
+                    v-model="local.primaryBusiness" label="Other Primary Type of Business" />
             </div>
             <div class="col-12 col-md-4">
                 <q-select v-bind="fieldUi" v-model="local.entityType"

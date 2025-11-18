@@ -132,12 +132,6 @@ function acknowledgeDisclosure() {
   showDisclosure.value = false
 }
 
-async function onNext() {
-  const ok = await formRef.value?.validate()
-  if (ok) emit('next')
-}
-function onBack() { emit('back') }
-
 async function validate() { return await formRef.value?.validate() }
 defineExpose({ validate })
 
@@ -165,11 +159,11 @@ defineExpose({ validate })
               <q-input v-bind="fieldUi" v-model="o.title" label="Position or Title *" :rules="[required]" />
             </div>
           </div>
-          <div class="text-caption text-weight-medium q-mt-sm">Home Address</div>
+          <div class="text-caption text-weight-medium q-mt-sm">Address</div>
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
-              <q-select v-bind="fieldUi" v-model="o.homeAddress!.country" label="Country *"
-                :options="countryOptions" emit-value map-options :rules="[required]"
+              <q-select v-bind="fieldUi" v-model="o.homeAddress!.country" label="Country *" :options="countryOptions"
+                emit-value map-options :rules="[required]"
                 @update:model-value="val => onAddressCountryChange(o.homeAddress, val as string)" />
             </div>
             <div class="col-12 col-md-8">
@@ -257,11 +251,6 @@ defineExpose({ validate })
         </div>
       </div>
     </q-form>
-
-    <div class="row q-gutter-sm q-mt-md">
-      <q-btn color="secondary" label="Back" @click="onBack" />
-      <q-btn color="primary" label="Next" @click="onNext" />
-    </div>
   </div>
 
   <!-- One-time disclosure modal -->
@@ -278,7 +267,7 @@ defineExpose({ validate })
             within your company who should receive this information. Please attach additional sheets if necessary.
           </p>
           <p class="q-mb-md text-caption text-grey-7">
-            eMail Policy: At no time will we sell or share your email address with a third party. In addition to order
+            Email Policy: At no time will we sell or share your email address with a third party. In addition to order
             confirmations and shipping notifications, we send promotional emails, which include special offers, sales
             tips and other information. Anyone who receives these emails can unsubscribe at any time.
           </p>
@@ -336,7 +325,8 @@ defineExpose({ validate })
           </p>
           <p class="q-mb-md">
             For additional information regarding our information practices, please review our full Privacy Policy at
-            <a href="https://www.ennis.com/privacy-policy/" target="_blank" rel="noopener">https://www.ennis.com/privacy-policy/</a>.
+            <a href="https://www.ennis.com/privacy-policy/" target="_blank"
+              rel="noopener">https://www.ennis.com/privacy-policy/</a>.
           </p>
           <p class="text-caption text-grey-7 q-mt-sm">
             By clicking "I Acknowledge", you confirm you have read and agree to the Privacy Notice and the Company's

@@ -57,7 +57,7 @@ const IN_STATE_ONLY = new Set(['CA', 'FL', 'HI', 'IL', 'LA', 'MD', 'MA', 'WA', '
 // Annotate special states in dropdown labels
 const exemptOptions = computed(() => stateOptions.map(o => {
   if (o.value === 'NY') return { ...o, label: `${o.label} — ST‑120 required` }
-  if (IN_STATE_ONLY.has(o.value)) return { ...o, label: `${o.label} — in‑state only` }
+  if (IN_STATE_ONLY.has(o.value)) return { ...o, label: `${o.label} — State requires in state registration to be exempt` }
   return o
 }))
 
@@ -76,12 +76,6 @@ const resaleNumberRule = (code: string) => (v: string) => {
   if (code === 'NY') return true
   return IN_STATE_ONLY.has(code) ? ((v && v.trim()) ? true : 'Required for this state') : true
 }
-
-async function onNext() {
-  const ok = await formRef.value?.validate()
-  if (ok) emit('next')
-}
-function onBack() { emit('back') }
 
 async function validate() { return await formRef.value?.validate() }
 defineExpose({ validate })
@@ -151,8 +145,8 @@ ensureDefaults()
             :rules="[required]" />
         </div>
         <div class="col-12 col-md-4">
-          <q-select v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserState"
-            :options="purchaserRegionOptions" :label="purchaserRegionLabel" emit-value map-options :rules="[required]"
+          <q-select v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserState" :options="purchaserRegionOptions"
+            :label="purchaserRegionLabel" emit-value map-options :rules="[required]"
             :disable="!local.resaleCertificate?.purchaserCountry" />
         </div>
         <div class="col-12 col-md-4">
@@ -241,7 +235,7 @@ ensureDefaults()
       <div class="row q-col-gutter-md q-mt-md">
         <div class="col-12 col-md-6">
           <q-select v-bind="fieldUi" use-chips multiple emit-value map-options :options="exemptOptions"
-            v-model="local.exemptStates" label="States Exempt In (select all that apply)" />
+            v-model="local.exemptStates" label="States registered in (select all that apply)" />
         </div>
         <div class="col-12">
           <div class="text-caption q-mb-xs">Resale Certificate Number (per state)</div>
@@ -295,11 +289,6 @@ ensureDefaults()
         </div>
       </div>
     </q-form>
-
-    <div class="row q-gutter-sm q-mt-md">
-      <q-btn color="secondary" label="Back" @click="onBack" />
-      <q-btn color="primary" label="Next" @click="onNext" />
-    </div>
   </div>
 </template>
 
