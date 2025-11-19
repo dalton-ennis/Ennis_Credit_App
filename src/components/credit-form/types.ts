@@ -89,6 +89,7 @@ export type CreditForm = {
     state: string
     zip: string
     country?: string
+    poRequired: boolean
     mailingDifferent?: boolean
     mailing?: Address
     entityType: 'Proprietorship' | 'Partnership' | 'Corporation' | 'LLC'

@@ -226,9 +226,16 @@ watch(() => local.value.country, () => {
         </div>
 
         <!-- Mailing address -->
-        <q-toggle v-model="local.mailingDifferent" label="Mailing address is different"
-            class="q-mt-none q-mb-none q-pb-none"
-            @update:model-value="val => val && (local.mailing ??= { address: '', city: '', state: '', zip: '' })" />
+        <div class="row q-col-gutter-md">
+            <div class="col-6 col-md-6">
+                <q-toggle v-model="local.mailingDifferent" label="Mailing address is different"
+                    class="q-mt-none q-mb-none q-pb-none"
+                    @update:model-value="val => val && (local.mailing ??= { address: '', city: '', state: '', zip: '' })" />
+            </div>
+            <div class="col-6 col-md-6">
+                <q-toggle :model-value="local.poRequired" label="Do you require a PO number?" />
+            </div>
+        </div>
         <div v-if="local.mailingDifferent" class="row q-col-gutter-md q-mt-none">
             <div class="col-12">
                 <q-input v-bind="fieldUi" v-model="(local.mailing!.address)" label="Mailing Street" />
@@ -253,8 +260,8 @@ watch(() => local.value.country, () => {
             <div class="col-12 col-md-4">
                 <q-select v-bind="fieldUi" v-model="primaryBusinessSelection" label="Primary Type of Business"
                     :options="primaryBusinessOptions" />
-                <q-input v-if="isPrimaryBusinessOther" class="q-mt-md" v-bind="fieldUi"
-                    v-model="local.primaryBusiness" label="Other Primary Type of Business" />
+                <q-input v-if="isPrimaryBusinessOther" class="q-mt-md" v-bind="fieldUi" v-model="local.primaryBusiness"
+                    label="Other Primary Type of Business" />
             </div>
             <div class="col-12 col-md-4">
                 <q-select v-bind="fieldUi" v-model="local.entityType"

@@ -17,6 +17,7 @@ export function useCreditForm() {
         state: '',
         zip: '',
         country: '',
+        poRequired: false,
         mailingDifferent: false,
         mailing: EMPTY_ADDR(),
         entityType: 'Corporation',
