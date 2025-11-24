@@ -233,7 +233,8 @@ watch(() => local.value.country, () => {
                     @update:model-value="val => val && (local.mailing ??= { address: '', city: '', state: '', zip: '' })" />
             </div>
             <div class="col-6 col-md-6">
-                <q-toggle :model-value="local.poRequired" label="Do you require a PO number?" />
+                <q-toggle @update:model-value="!local.poRequired" v-model="local.poRequired"
+                    label="Do you require a PO number?" />
             </div>
         </div>
         <div v-if="local.mailingDifferent" class="row q-col-gutter-md q-mt-none">

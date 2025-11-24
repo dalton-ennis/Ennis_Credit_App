@@ -73,16 +73,22 @@ function setStepRef(id: StepId, el: StepComponent | null) {
     if (el) stepRefs[id] = el
 }
 
-async function nextValidated() {
+async function validateCurrentStep() {
     const inst = stepRefs[current.value as string]
     if (inst && typeof inst.validate === 'function') {
-        const ok = await inst.validate()
-        if (!ok) return
+        return await inst.validate()
     }
-    next()
+    return true
 }
 
-defineExpose({ next, back, current, nextValidated })
+async function nextValidated() {
+    const ok = await validateCurrentStep()
+    if (!ok) return false
+    next()
+    return true
+}
+
+defineExpose({ next, back, current, nextValidated, validateCurrentStep })
 </script>
 
 <template>

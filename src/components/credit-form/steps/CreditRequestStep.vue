@@ -143,7 +143,7 @@ defineExpose({ validate })
       <!-- Owners & Officers -->
       <div class="row items-center justify-between">
         <div class="text-subtitle2">Principal Owners &amp; Officers</div>
-        <q-btn color="primary" flat icon="add" label="Add owner" @click="addOwner" />
+        <q-btn :disable="owners.length === 2" color="primary" flat icon="add" label="Add owner" @click="addOwner" />
       </div>
 
       <div v-for="(o, i) in owners" :key="i" class="q-pa-md q-mb-sm bg-grey-2 rounded-borders">
@@ -284,7 +284,7 @@ defineExpose({ validate })
             policies, individual facility terms, and the terms and conditions set out at printtermsandconditions.com.
           </p>
 
-          <div class="text-subtitle2 q-mb-sm">Personal Guarantee</div>
+          <!-- <div class="text-subtitle2 q-mb-sm">Personal Guarantee</div>
           <p class="q-mb-lg">
             In consideration for credit extended, or to be extended, to the company listed on this application, I/we do
             hereby agree, individually/jointly, to guarantee payment of the indebtedness of the company. The undersigned
@@ -292,7 +292,7 @@ defineExpose({ validate })
             demand for payment, any notice of default, and other notices to which the guarantor might be entitled. This
             guarantee shall inure to the benefit of the heirs, administrators, executors, successors, or assigns of the
             parties hereto.
-          </p>
+          </p> -->
 
           <q-separator class="q-my-md" />
 

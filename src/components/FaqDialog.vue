@@ -61,7 +61,7 @@ const sections: FaqSection[] = [
     items: [
       {
         q: 'Will a personal guarantee be required?',
-        a: 'Yes. A personal guarantee is required when applying for open account terms.'
+        a: 'A personal guarantee may be required depending on the credit review.'
       }
     ]
   },
@@ -92,6 +92,10 @@ const sections: FaqSection[] = [
       {
         q: 'What if I forget to submit my exemption certificate before placing an order?',
         a: 'Sales tax may be charged until a valid certificate is received. Previously charged tax cannot be refunded retroactively.'
+      },
+      {
+        q: 'Why does the credit application ask whether my resale certificate is “in-state only”?',
+        a: 'Some states require businesses to hold a resale or exemption certificate specifically issued by that state. These states do not accept out-of-state resale numbers. We must have a valid in-state resale/exemption certificate number on file to exempt tax in these states.'
       }
     ]
   },
@@ -131,13 +135,8 @@ const sections: FaqSection[] = [
         <q-list separator>
           <div v-for="section in sections" :key="section.title" class="q-mb-md">
             <div class="text-subtitle1 text-weight-bold q-mb-sm">{{ section.title }}</div>
-            <q-expansion-item
-              v-for="(item, idx) in section.items"
-              :key="section.title + '-' + idx"
-              expand-icon="expand_more"
-              icon="help_outline"
-              :label="item.q"
-            >
+            <q-expansion-item v-for="(item, idx) in section.items" :key="section.title + '-' + idx"
+              expand-icon="expand_more" icon="help_outline" :label="item.q">
               <q-card>
                 <q-card-section>
                   <div class="text-body1">{{ item.a }}</div>
@@ -149,7 +148,7 @@ const sections: FaqSection[] = [
       </q-card-section>
     </q-card>
   </q-dialog>
-  
+
 </template>
 
 <style scoped>

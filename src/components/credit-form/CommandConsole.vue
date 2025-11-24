@@ -4,7 +4,7 @@ import { useQuasar } from 'quasar'
 import type { CreditForm } from './types'
 import { useWizardStore } from 'src/stores/wizard'
 
-const props = defineProps<{ modelValue: CreditForm }>()
+const props = defineProps<{ modelValue: CreditForm; nextBusy?: boolean }>()
 const emit = defineEmits(['update:modelValue', 'next', 'back'])
 const $q = useQuasar()
 const wizard = useWizardStore()
@@ -15,8 +15,12 @@ const form = computed({
 })
 
 const lockAll = computed(() => wizard.lockAll)
+const nextBusy = computed(() => !!props.nextBusy)
 
-function onNext() { emit('next') }
+function onNext() {
+  if (nextBusy.value) return
+  emit('next')
+}
 function onBack() { emit('back') }
 
 function onLocChange(val: boolean) {
@@ -57,8 +61,9 @@ function onTaxChange(val: boolean) {
       </q-card-section>
       <q-separator />
       <q-card-section class="q-gutter-xs">
-        <q-btn color="primary" label="Next" class="full-width" @click="onNext" />
-        <q-btn color="secondary" outline label="Back" class="full-width" @click="onBack" />
+        <q-btn color="primary" label="Next" class="full-width" @click="onNext" :loading="nextBusy"
+          :disable="lockAll || nextBusy" />
+        <q-btn color="secondary" outline label="Back" class="full-width" @click="onBack" :disable="nextBusy" />
       </q-card-section>
     </q-card>
   </div>
