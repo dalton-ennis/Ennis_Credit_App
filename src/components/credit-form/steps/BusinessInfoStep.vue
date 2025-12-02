@@ -101,6 +101,7 @@ const syncToParent = (form: CreditForm): CreditForm => {
 }
 
 let skipNextEmit = false
+let skipCountryReset = false
 
 watch(
     local,
@@ -117,11 +118,16 @@ watch(
 watch(
     () => props.modelValue,
     (val) => {
+        const previousCountry = local.value.country
+        const nextLocal = cloneForm(val)
         skipNextEmit = true
-        local.value = cloneForm(val)
+        local.value = nextLocal
         ensureMailing(local.value)
         ensureContacts(local.value)
         syncPrimaryBusinessSelection()
+        if (nextLocal.country !== previousCountry) {
+            skipCountryReset = true
+        }
     },
     { deep: false }
 )
@@ -160,15 +166,22 @@ const regionLabel = computed(() => isCA.value ? 'Province/Territory *' : 'State 
 const postalLabel = computed(() => isCA.value ? 'Postal Code *' : 'ZIP *')
 const postalRules = computed(() => isCA.value ? [required, canadianPostalRule] : [required, zipRule])
 
-watch(() => local.value.country, () => {
-    // Clear region/postal when country changes to prevent invalid combos
-    local.value.state = ''
-    local.value.zip = ''
-    if (local.value.mailing) {
-        local.value.mailing.state = ''
-        local.value.mailing.zip = ''
+watch(
+    () => local.value.country,
+    () => {
+        if (skipCountryReset) {
+            skipCountryReset = false
+            return
+        }
+        // Clear region/postal when the user changes country
+        local.value.state = ''
+        local.value.zip = ''
+        if (local.value.mailing) {
+            local.value.mailing.state = ''
+            local.value.mailing.zip = ''
+        }
     }
-})
+)
 
 </script>
 

@@ -3,7 +3,6 @@ import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import FaqDialog from 'src/components/FaqDialog.vue'
 import { plantTypes, isPlantCode, type PlantDetails } from 'src/utility/Utility'
-
 const route = useRoute()
 
 const plantDetails = ref<PlantDetails | null>(null)
@@ -59,6 +58,7 @@ onMounted(() => {
               <div class="text-body2 opacity-80">Link Generator</div>
             </div>
             <div v-if="!isAdmin" class="row items-center">
+              <q-btn color="white" text-color="primary" unelevated label="admin" class="q-mr-sm" href="/admin" />
               <q-btn color="white" text-color="primary" unelevated label="FAQ" icon="help_outline"
                 @click="showFaq = true" />
             </div>

@@ -32,8 +32,8 @@ export function useCreditForm() {
         statementEmail: '',
         AcknowledgementEmail: '',
         // Branching
-        requestLineOfCredit: false,
-        requestTaxExempt: false,
+        requestLineOfCredit: true,
+        requestTaxExempt: true,
 
         // Credit app
         creditAmount: null,

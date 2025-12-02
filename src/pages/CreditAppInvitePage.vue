@@ -67,6 +67,7 @@ type BusinessDto = {
   InvoiceEmail?: string
   StatementEmail?: string
   AcknowledgementEmail?: string
+  Contacts?: Contact[]
 }
 
 type BusinessSection = {
@@ -91,6 +92,8 @@ type BusinessSection = {
   InvoiceEmail?: string
   StatementEmail?: string
   AcknowledgementEmail?: string
+  Contacts?: Contact[]
+  contacts?: Contact[]
 }
 
 type CreditApplicationDto = {
@@ -150,6 +153,15 @@ function toBusinessDto(src: CreditForm): BusinessDto {
 
   if (src.mailingDifferent && src.mailing) {
     payload.Mailing = mapMailing(src.mailing)
+  }
+
+  if (Array.isArray(src.contacts) && src.contacts.length) {
+    payload.Contacts = src.contacts.map(contact => ({
+      role: contact.role,
+      name: sanitize(contact.name),
+      title: sanitize(contact.title),
+      email: sanitize(contact.email),
+    }))
   }
 
   return payload
@@ -223,7 +235,7 @@ async function fetchApplication() {
   error.value = null
   try {
     const response = await axios.get<CreditApplicationDto>(`${API_BASE}/api/apps/${guid.value}`)
-    console.log(response, 'Data')
+    console.log(response.data, 'Data')
     applyRemoteForm(response.data)
     const headerTag = readEtag(response.headers)
     const bodyTag = ensureQuotedEtag(response.data.ETag)
@@ -264,6 +276,31 @@ function mapBusinessToForm(payload: BusinessSection, target: CreditForm) {
   target.invoiceEmail = sanitize(payload.InvoiceEmail)
   target.statementEmail = sanitize(payload.StatementEmail)
   target.AcknowledgementEmail = sanitize(payload.AcknowledgementEmail)
+
+  const payloadContacts = payload.Contacts ?? payload.contacts
+  if (Array.isArray(payloadContacts) && payloadContacts.length) {
+    const normalized = payloadContacts.map(contact => {
+      const source = contact as Contact | Record<string, unknown>
+      const readField = (camel: keyof Contact, alt?: string) => {
+        const camelValue = (source as Contact)[camel] as unknown
+        if (typeof camelValue === 'string') return sanitize(camelValue)
+        const camelKey = camel as string
+        const altKey = alt ?? `${camelKey.charAt(0).toUpperCase()}${camelKey.slice(1)}`
+        const altValue = (source as Record<string, unknown>)[altKey]
+        return typeof altValue === 'string' ? sanitize(altValue) : ''
+      }
+      return {
+        role: readField('role', 'Role') || 'additional',
+        name: readField('name', 'Name'),
+        title: readField('title', 'Title'),
+        email: readField('email', 'Email'),
+      }
+    })
+    if (!normalized.some(c => c.role === 'main')) {
+      normalized[0]!.role = 'main'
+    }
+    target.contacts = normalized
+  }
 
   if (target.mailingDifferent) {
     target.mailing = target.mailing ?? emptyAddress()
@@ -338,12 +375,13 @@ async function saveBusinessStep() {
   savingBusiness.value = true
   try {
     const payload = toBusinessDto(form.value)
-    const response = await axios.patch(
+    const response = await axios.patch<{ ETag?: string }>(
       `${API_BASE}/api/apps/${guid.value}/business`,
       payload,
       { headers: { 'If-Match': ifMatch } }
     )
-    const nextEtag = readEtag(response.headers)
+    let nextEtag = readEtag(response.headers)
+    if (!nextEtag) nextEtag = ensureQuotedEtag(response.data?.ETag)
     if (nextEtag) etag.value = nextEtag
     $q.notify({ type: 'positive', message: 'Business information saved.' })
     return true
@@ -406,7 +444,7 @@ watch(
         </q-card-section>
       </q-card>
 
-      <div class="row q-col-gutter-md" :class="{ 'opacity-50 pointer-events-none': loading }">
+      <div v-if="!loading" class="row q-col-gutter-md" :class="{ 'opacity-50 pointer-events-none': loading }">
         <div class="col-12 col-md-9">
           <CreditAppStepper ref="stepperRef" v-model="form" />
         </div>
