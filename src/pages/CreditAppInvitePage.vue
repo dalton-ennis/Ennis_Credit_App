@@ -32,6 +32,7 @@ const stepperRef = ref<StepperInstance | null>(null)
 const loading = ref(false)
 const error = ref<string | null>(null)
 const savingBusiness = ref(false)
+const savingCredit = ref(false)
 const etag = ref<string | null>(null)
 
 const API_BASE = import.meta.env.VITE_BE_ENDPOINT ?? 'https://localhost:7009'
@@ -43,6 +44,48 @@ type BusinessMailingDto = {
   State: string
   Zip: string
   Country?: string
+}
+
+type CreditAddressDto = {
+  Address: string
+  City: string
+  State: string
+  Zip: string
+  Country?: string
+}
+
+type CreditOwnerDto = {
+  Name: string
+  Title: string
+  Phone?: string
+  Email?: string
+  HomeAddress: CreditAddressDto
+}
+
+type CreditTradeRefDto = {
+  Name: string
+  AccountNo?: string
+  Phone?: string
+  Fax?: string
+  Email?: string
+  Address: CreditAddressDto
+}
+
+type CreditBankDto = {
+  Name?: string
+  AccountNo?: string
+  Phone?: string
+  Fax?: string
+  Email?: string
+  Address: CreditAddressDto
+}
+
+type CreditSectionDto = {
+  CreditAmount?: number | null
+  CreditDisclosureAck?: boolean
+  Owners: CreditOwnerDto[]
+  TradeRefs: CreditTradeRefDto[]
+  Bank: CreditBankDto
 }
 
 type BusinessDto = {
@@ -112,12 +155,116 @@ type CreditApplicationDto = {
   RequestLineOfCredit?: boolean
   RequestTaxExempt?: boolean
   CreditAmount?: number | null
+  CreditDisclosureAck?: boolean
 } & Partial<CreditForm>
 
 const entityTypeOptions: CreditForm['entityType'][] = ['Proprietorship', 'Partnership', 'Corporation', 'LLC']
 const sanitize = (value?: string | null) => value ?? ''
 const emptyAddress = (): Address => ({ address: '', city: '', state: '', zip: '', country: '' })
 const cloneCreditForm = (src: CreditForm): CreditForm => JSON.parse(JSON.stringify(src)) as CreditForm
+const normalizeAddress = (input?: Partial<Address> & Record<string, unknown>): Address => {
+  const source = input ?? {}
+  const read = (key: string) => {
+    const camel = (source as Record<string, unknown>)[key]
+    if (typeof camel === 'string') return camel
+    const pascalKey = key.charAt(0).toUpperCase() + key.slice(1)
+    const pascal = (source as Record<string, unknown>)[pascalKey]
+    return typeof pascal === 'string' ? pascal : ''
+  }
+  return {
+    address: sanitize(read('address')),
+    city: sanitize(read('city')),
+    state: sanitize(read('state')),
+    zip: sanitize(read('zip')),
+    country: sanitize(read('country')),
+  }
+}
+const toCreditAddressDto = (addr?: Address): CreditAddressDto => ({
+  Address: sanitize(addr?.address),
+  City: sanitize(addr?.city),
+  State: sanitize(addr?.state),
+  Zip: sanitize(addr?.zip),
+  Country: sanitize(addr?.country),
+})
+const toCreditOwnerDto = (owner: Owner): CreditOwnerDto => ({
+  Name: sanitize(owner.name),
+  Title: sanitize(owner.title),
+  Phone: sanitize(owner.phone),
+  Email: sanitize(owner.email),
+  HomeAddress: toCreditAddressDto(owner.homeAddress ?? emptyAddress()),
+})
+const toCreditTradeDto = (trade: TradeRef): CreditTradeRefDto => ({
+  Name: sanitize(trade.name),
+  AccountNo: sanitize(trade.accountNo),
+  Phone: sanitize(trade.phone),
+  Fax: sanitize(trade.fax),
+  Email: sanitize(trade.email),
+  Address: toCreditAddressDto(trade.address ?? emptyAddress()),
+})
+const toCreditBankDto = (bank?: Bank): CreditBankDto => ({
+  Name: sanitize(bank?.name),
+  AccountNo: sanitize(bank?.accountNo),
+  Phone: sanitize(bank?.phone),
+  Fax: sanitize(bank?.fax),
+  Email: sanitize(bank?.email),
+  Address: toCreditAddressDto(bank?.address ?? emptyAddress()),
+})
+const readStringField = (source: Record<string, unknown>, key: string, fallback = '') => {
+  const camel = source[key]
+  if (typeof camel === 'string') return camel
+  const pascalKey = key.charAt(0).toUpperCase() + key.slice(1)
+  const pascal = source[pascalKey]
+  return typeof pascal === 'string' ? pascal : fallback
+}
+const readAddressObject = (source: Record<string, unknown>) => {
+  const camel = source['address']
+  if (camel && typeof camel === 'object') return camel as Record<string, unknown>
+  const pascal = source['Address']
+  if (pascal && typeof pascal === 'object') return pascal as Record<string, unknown>
+  return undefined
+}
+const normalizeOwnerDto = (owner: Record<string, unknown>): Owner => {
+  const addressSource =
+    (owner['homeAddress'] as Record<string, unknown>) ??
+    (owner['HomeAddress'] as Record<string, unknown>) ??
+    readAddressObject(owner)
+  return {
+    name: sanitize(readStringField(owner, 'name')),
+    title: sanitize(readStringField(owner, 'title')),
+    ssn: sanitize(readStringField(owner, 'ssn')),
+    phone: sanitize(readStringField(owner, 'phone')),
+    email: sanitize(readStringField(owner, 'email')),
+    homeAddress: normalizeAddress(addressSource),
+  }
+}
+const normalizeTradeRefDto = (trade: Record<string, unknown>): TradeRef => {
+  const addressSource =
+    (trade['address'] as Record<string, unknown>) ??
+    (trade['Address'] as Record<string, unknown>) ??
+    readAddressObject(trade)
+  return {
+    name: sanitize(readStringField(trade, 'name')),
+    accountNo: sanitize(readStringField(trade, 'accountNo')),
+    phone: sanitize(readStringField(trade, 'phone')),
+    fax: sanitize(readStringField(trade, 'fax')),
+    email: sanitize(readStringField(trade, 'email')),
+    address: normalizeAddress(addressSource),
+  }
+}
+const normalizeBankDto = (bank: Record<string, unknown>): Bank => {
+  const addressSource =
+    (bank['address'] as Record<string, unknown>) ??
+    (bank['Address'] as Record<string, unknown>) ??
+    readAddressObject(bank)
+  return {
+    name: sanitize(readStringField(bank, 'name')),
+    accountNo: sanitize(readStringField(bank, 'accountNo')),
+    phone: sanitize(readStringField(bank, 'phone')),
+    fax: sanitize(readStringField(bank, 'fax')),
+    email: sanitize(readStringField(bank, 'email')),
+    address: normalizeAddress(addressSource),
+  }
+}
 
 function mapMailing(addr?: CreditForm['mailing']): BusinessMailingDto {
   return {
@@ -170,6 +317,18 @@ function toBusinessDto(src: CreditForm): BusinessDto {
   return payload
 }
 
+function toCreditDto(src: CreditForm): CreditSectionDto {
+  const owners = Array.isArray(src.owners) && src.owners.length ? src.owners : []
+  const tradeRefs = Array.isArray(src.tradeRefs) && src.tradeRefs.length ? src.tradeRefs : []
+  return {
+    CreditAmount: src.creditAmount ?? null,
+    CreditDisclosureAck: !!src.creditDisclosureAck,
+    Owners: owners.map(toCreditOwnerDto),
+    TradeRefs: tradeRefs.map(toCreditTradeDto),
+    Bank: toCreditBankDto(src.bank),
+  }
+}
+
 const headerValueToString = (value: unknown): string | null => {
   if (value == null) return null
 
@@ -220,6 +379,16 @@ async function onNext() {
     const valid = (await stepper.validateCurrentStep?.()) ?? true
     if (!valid) return
     const saved = await saveBusinessStep()
+    if (!saved) return
+    stepper.next?.()
+    return
+  }
+
+  if (wizard.current === 'credit') {
+    if (savingCredit.value) return
+    const valid = (await stepper.validateCurrentStep?.()) ?? true
+    if (!valid) return
+    const saved = await saveCreditStep()
     if (!saved) return
     stepper.next?.()
     return
@@ -334,6 +503,12 @@ function applyRemoteForm(payload: CreditApplicationDto | undefined) {
     nextForm.requestTaxExempt = !!safe.requestTaxExempt
 
   if (safe.CreditAmount !== undefined) nextForm.creditAmount = safe.CreditAmount
+  else if ((safe as CreditForm).creditAmount !== undefined) nextForm.creditAmount = (safe as CreditForm).creditAmount as number
+
+  if (safe.CreditDisclosureAck !== undefined)
+    nextForm.creditDisclosureAck = !!safe.CreditDisclosureAck
+  else if ((safe as CreditForm).creditDisclosureAck !== undefined)
+    nextForm.creditDisclosureAck = !!(safe as CreditForm).creditDisclosureAck
 
   if (safe.Business) mapBusinessToForm(safe.Business, nextForm)
 
@@ -341,15 +516,15 @@ function applyRemoteForm(payload: CreditApplicationDto | undefined) {
     nextForm.contacts = safe.Contacts.map(contact => ({ ...contact }))
 
   if (Array.isArray(safe.Owners) && safe.Owners.length)
-    nextForm.owners = safe.Owners.map(owner => ({ ...owner }))
+    nextForm.owners = safe.Owners.map(owner => normalizeOwnerDto(owner as Record<string, unknown>))
 
   if (Array.isArray(safe.TradeRefs) && safe.TradeRefs.length)
-    nextForm.tradeRefs = safe.TradeRefs.map(ref => ({ ...ref }))
+    nextForm.tradeRefs = safe.TradeRefs.map(ref => normalizeTradeRefDto(ref as Record<string, unknown>))
 
   if (Array.isArray(safe.Signers) && safe.Signers.length)
     nextForm.signers = safe.Signers.map(signer => ({ ...signer }))
 
-  if (safe.Bank) nextForm.bank = { ...safe.Bank }
+  if (safe.Bank) nextForm.bank = normalizeBankDto(safe.Bank as Record<string, unknown>)
 
   if (safe.ResaleCertificate) nextForm.resaleCertificate = { ...safe.ResaleCertificate }
 
@@ -362,6 +537,7 @@ function resetInviteState() {
   loading.value = false
   error.value = null
   savingBusiness.value = false
+  savingCredit.value = false
   etag.value = null
 }
 
@@ -409,6 +585,50 @@ async function saveBusinessStep() {
   }
 }
 
+async function saveCreditStep() {
+  if (!guid.value) {
+    $q.notify({ type: 'negative', message: 'Invite link is missing an application id.' })
+    return false
+  }
+  const ifMatch = ensureQuotedEtag(etag.value)
+  if (!ifMatch) {
+    $q.notify({ type: 'negative', message: 'Missing ETag from server. Reload the application and try again.' })
+    return false
+  }
+
+  savingCredit.value = true
+  try {
+    const payload = toCreditDto(form.value)
+    const response = await axios.patch<{ ETag?: string }>(
+      `${API_BASE}/api/apps/${guid.value}/credit`,
+      payload,
+      { headers: { 'If-Match': ifMatch } }
+    )
+    let nextEtag = readEtag(response.headers)
+    if (!nextEtag) nextEtag = ensureQuotedEtag(response.data?.ETag)
+    if (nextEtag) etag.value = nextEtag
+    $q.notify({ type: 'positive', message: 'Credit information saved.' })
+    return true
+  } catch (err) {
+    let message = 'Unable to save credit information.'
+    if (axios.isAxiosError(err)) {
+      if (err.response?.status === 409) {
+        message = 'This application was updated elsewhere. Reload and try again.'
+      } else if (typeof err.response?.data === 'string') {
+        message = err.response.data
+      } else if (err.message) {
+        message = err.message
+      }
+    } else if (err instanceof Error) {
+      message = err.message
+    }
+    $q.notify({ type: 'negative', message })
+    return false
+  } finally {
+    savingCredit.value = false
+  }
+}
+
 watch(
   () => guid.value,
   (newGuid) => {
@@ -418,7 +638,11 @@ watch(
   { immediate: true }
 )
 
-watch(() => form.value.requestTaxExempt, async () => {
+watch(() => form.value.requestTaxExempt, async (val, prev) => {
+  if (val === prev) return
+  if (!guid.value) return
+  const ifMatch = ensureQuotedEtag(etag.value)
+  if (!ifMatch) return
   const payload = {
     requestLineOfCredit: form.value.requestLineOfCredit,
     requestTaxExempt: form.value.requestTaxExempt,
@@ -427,13 +651,17 @@ watch(() => form.value.requestTaxExempt, async () => {
   const res = await axios.patch(
     `${API_BASE}/api/apps/${guid.value}/requests`,
     payload,
-    { headers: { "If-Match": etag.value } }
+    { headers: { "If-Match": ifMatch } }
   )
 
   etag.value = res.data.ETag
 })
 
-watch(() => form.value.requestLineOfCredit, async () => {
+watch(() => form.value.requestLineOfCredit, async (val, prev) => {
+  if (val === prev) return
+  if (!guid.value) return
+  const ifMatch = ensureQuotedEtag(etag.value)
+  if (!ifMatch) return
   const payload = {
     requestLineOfCredit: form.value.requestLineOfCredit,
     requestTaxExempt: form.value.requestTaxExempt,
@@ -442,7 +670,7 @@ watch(() => form.value.requestLineOfCredit, async () => {
   const res = await axios.patch(
     `${API_BASE}/api/apps/${guid.value}/requests`,
     payload,
-    { headers: { "If-Match": etag.value } }
+    { headers: { "If-Match": ifMatch } }
   )
 
   etag.value = res.data.ETag
@@ -464,7 +692,7 @@ watch(() => form.value.requestLineOfCredit, async () => {
           <CreditAppStepper ref="stepperRef" v-model="form" />
         </div>
         <div class="col-12 col-md-3">
-          <CommandConsole v-model="form" @next="onNext" @back="onBack" :next-busy="savingBusiness" />
+          <CommandConsole v-model="form" @next="onNext" @back="onBack" :next-busy="savingBusiness || savingCredit" />
         </div>
       </div>
     </div>
