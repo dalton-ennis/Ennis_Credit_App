@@ -18,7 +18,7 @@ const ensureAddress = (addr?: Address): Address => ({
   zip: addr?.zip ?? '',
   country: addr?.country ?? defaultCountry.value
 })
-const emptyOwner = (): Owner => ({ name: '', title: '', ssn: '', homeAddress: ensureAddress() })
+const emptyOwner = (): Owner => ({ name: '', title: '', ssn: '', phone: '', email: '', homeAddress: ensureAddress() })
 const emptyBank = (): Bank => ({ name: '', accountNo: '', phone: '', fax: '', email: '', address: ensureAddress() })
 const emptyRef = (): TradeRef => ({ name: '', accountNo: '', phone: '', fax: '', email: '', address: ensureAddress() })
 
@@ -99,6 +99,7 @@ watch(defaultCountry, (newCountry, oldCountry) => {
   }
 })
 
+const noAutofillAttrs = { autocomplete: 'new-password' } as const
 // Form and validation
 const formRef = ref<QForm | null>(null)
 const showDisclosure = ref(true)
@@ -139,7 +140,7 @@ defineExpose({ validate })
 
 <template>
   <div class="q-gutter-lg">
-    <q-form ref="formRef" greedy>
+    <q-form ref="formRef" greedy autocomplete="one-time-code">
       <!-- Owners & Officers -->
       <div class="row items-center justify-between">
         <div class="text-subtitle2">Principal Owners &amp; Officers</div>
@@ -159,28 +160,40 @@ defineExpose({ validate })
               <q-input v-bind="fieldUi" v-model="o.title" label="Position or Title *" :rules="[required]" />
             </div>
           </div>
+          <div class="row q-col-gutter-md q-mt-sm">
+            <div class="col-12 col-md-6">
+              <q-input v-bind="fieldUi" v-model="o.phone" label="Phone *" mask="(###) ###-####" fill-mask
+                :rules="[v => !v || phoneRule(v), required]" />
+            </div>
+            <div class="col-12 col-md-6">
+              <q-input v-bind="fieldUi" v-model="o.email" label="Email *" type="email"
+                :rules="[v => !v || emailRule(v), required]" />
+            </div>
+          </div>
           <div class="text-caption text-weight-medium q-mt-sm">Address</div>
           <div class="row q-col-gutter-md">
             <div class="col-12 col-md-4">
               <q-select v-bind="fieldUi" v-model="o.homeAddress!.country" label="Country *" :options="countryOptions"
-                emit-value map-options :rules="[required]"
+                emit-value map-options :rules="[required]" :input-attrs="noAutofillAttrs"
                 @update:model-value="val => onAddressCountryChange(o.homeAddress, val as string)" />
             </div>
             <div class="col-12 col-md-8">
-              <q-input v-bind="fieldUi" v-model="o.homeAddress!.address" label="Street *" :rules="[required]" />
+              <q-input v-bind="fieldUi" v-model="o.homeAddress!.address" label="Street *" :rules="[required]"
+                :input-attrs="noAutofillAttrs" autocomplete="one-time-code" />
             </div>
             <div class="col-12 col-md-5">
-              <q-input v-bind="fieldUi" v-model="o.homeAddress!.city" label="City *" :rules="[required]" />
+              <q-input v-bind="fieldUi" v-model="o.homeAddress!.city" label="City *" :rules="[required]"
+                :input-attrs="noAutofillAttrs" autocomplete="one-time-code" />
             </div>
             <div class="col-6 col-md-3">
               <q-select v-bind="fieldUi" v-model="o.homeAddress!.state" :options="regionOptionsFor(o.homeAddress)"
                 :label="regionLabelFor(o.homeAddress)" emit-value map-options :rules="[required]"
-                :disable="!o.homeAddress?.country" />
+                :disable="!o.homeAddress?.country" :input-attrs="noAutofillAttrs" autocomplete="one-time-code" />
             </div>
             <div class="col-6 col-md-4">
               <q-input v-bind="fieldUi" v-model="o.homeAddress!.zip" :label="postalLabelFor(o.homeAddress)"
                 :mask="postalMaskFor(o.homeAddress)" :fill-mask="postalFillMaskFor(o.homeAddress)"
-                :rules="postalRulesFor(o.homeAddress)" />
+                :rules="postalRulesFor(o.homeAddress)" :input-attrs="noAutofillAttrs" autocomplete="one-time-code" />
             </div>
           </div>
           <div class="q-mt-sm">
@@ -233,20 +246,22 @@ defineExpose({ validate })
               @update:model-value="val => onAddressCountryChange(r.address, val as string)" />
           </div>
           <div class="col-12">
-            <q-input v-bind="fieldUi" v-model="r.address!.address" label="Address *" :rules="[required]" />
+            <q-input v-bind="fieldUi" v-model="r.address!.address" label="Address *" :rules="[required]"
+              :input-attrs="noAutofillAttrs" autocomplete="one-time-code" />
           </div>
           <div class="col-12 col-md-5">
-            <q-input v-bind="fieldUi" v-model="r.address!.city" label="City *" :rules="[required]" />
+            <q-input v-bind="fieldUi" v-model="r.address!.city" label="City *" :rules="[required]"
+              :input-attrs="noAutofillAttrs" autocomplete="one-time-code" />
           </div>
           <div class="col-6 col-md-3">
             <q-select v-bind="fieldUi" v-model="r.address!.state" :options="regionOptionsFor(r.address)"
               :label="regionLabelFor(r.address)" emit-value map-options :rules="[required]"
-              :disable="!r.address?.country" />
+              :disable="!r.address?.country" :input-attrs="noAutofillAttrs" autocomplete="one-time-code" />
           </div>
           <div class="col-6 col-md-4">
             <q-input v-bind="fieldUi" v-model="r.address!.zip" :label="postalLabelFor(r.address)"
               :mask="postalMaskFor(r.address)" :fill-mask="postalFillMaskFor(r.address)"
-              :rules="postalRulesFor(r.address)" />
+              :rules="postalRulesFor(r.address)" :input-attrs="noAutofillAttrs" autocomplete="one-time-code" />
           </div>
         </div>
       </div>

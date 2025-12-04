@@ -3,7 +3,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import type { CreditForm } from '../types'
 import { stateOptions, countryOptions, provinceOptions } from '../utilities'
 import { dayRule, monthRule, required, yearRule, zipRule, canadianPostalRule } from 'src/utility/validators'
-import type { QForm } from 'quasar'
+import type { QForm, ValidationRule } from 'quasar'
 import { fieldUi } from '../utilities';
 
 const props = defineProps<{ modelValue: CreditForm }>()
@@ -56,8 +56,8 @@ const IN_STATE_ONLY = new Set(['CA', 'FL', 'HI', 'IL', 'LA', 'MD', 'MA', 'WA', '
 
 // Annotate special states in dropdown labels
 const exemptOptions = computed(() => stateOptions.map(o => {
-  if (o.value === 'NY') return { ...o, label: `${o.label} — ST‑120 required` }
-  if (IN_STATE_ONLY.has(o.value)) return { ...o, label: `${o.label} — State requires in state registration to be exempt` }
+  if (o.value === 'NY') return { ...o, label: `${o.label} – ST-120 required` }
+  if (IN_STATE_ONLY.has(o.value)) return { ...o, label: `${o.label} – State requires in state registration to be exempt` }
   return o
 }))
 
@@ -71,10 +71,79 @@ watch(() => local.value.exemptStates, (codes) => {
   local.value.resaleNumbers = { ...nums }
 }, { deep: true })
 
-// Rule: require a number for in‑state‑only states (except NY which uses ST‑120)
-const resaleNumberRule = (code: string) => (v: string) => {
-  if (code === 'NY') return true
-  return IN_STATE_ONLY.has(code) ? ((v && v.trim()) ? true : 'Required for this state') : true
+const stateFormatValidators: Partial<Record<string, { pattern: RegExp; message: string }>> = {
+  CA: { pattern: /^\d{3}-\d{6}$/, message: 'Format: NNN-NNNNNN' },
+  DC: { pattern: /^\d{12}$/, message: 'Format: 12 digits' },
+  FL: { pattern: /^\d{2}-\d{10}-\d$/, message: 'Format: NN-NNNNNNNNNN-N' },
+  HI: { pattern: /^GE-\d{3}-\d{3}-\d{4}-\d{2}$/, message: 'Format: GE-NNN-NNN-NNNN-NN' },
+  IL: { pattern: /^\d{4}-\d{4}$/, message: 'Format: NNNN-NNNN' },
+  LA: { pattern: /^\d{7}-\d{3}-\d{3}$/, message: 'Format: NNNNNNN-NNN-NNN' },
+  MD: { pattern: /^\d{8}$/, message: 'Format: 8 digits' },
+  MA: { pattern: /^SLS-\d{8}-\d{3}$/, message: 'Format: SLS-NNNNNNNN-NNN' },
+  NY: { pattern: /^\d{2}-\d{7}$/, message: 'Format: NN-NNNNNNN' },
+  WA: { pattern: /^\d{3}-\d{3}-\d{3}$/, message: 'Format: NNN-NNN-NNN' },
+}
+
+const stateMaskMap: Partial<Record<string, string>> = {
+  CA: '###-######',
+  DC: '############',
+  FL: '##-##########-#',
+  HI: 'AA-###-###-####-##',
+  IL: '####-####',
+  LA: '#######-###-###',
+  MD: '########',
+  MA: 'AAA-########-###',
+  NY: '##-#######',
+  WA: '###-###-###',
+}
+
+const resaleMaskFor = (code: string) => stateMaskMap[code]
+
+const normalizeValue = (val: unknown): string => {
+  if (val == null) return ''
+
+  // If it's already a string
+  if (typeof val === 'string') {
+    return val.trim()
+  }
+
+  // If it's a number, boolean, bigint, symbol → safe to stringify
+  if (typeof val === 'number' || typeof val === 'boolean' || typeof val === 'bigint') {
+    return String(val).trim()
+  }
+
+  // If it's a Date → convert to ISO or whatever format you want
+  if (val instanceof Date) {
+    return val.toISOString().trim()
+  }
+
+  // If it's an object or array → return empty (or throw)
+  return ''
+}
+
+
+// Rule: require a number for in-state-only states (special formats handled)
+const resaleNumberRule = (code: string): ValidationRule => (value: unknown) => {
+  const trimmed = normalizeValue(value)
+  const format = stateFormatValidators[code]
+
+  if (code === 'NY') {
+    if (!trimmed) return 'Required for NY'
+    if (format && !format.pattern.test(trimmed)) return format.message
+    return true
+  }
+
+  if (IN_STATE_ONLY.has(code) && !trimmed) {
+    return 'Required for this state'
+  }
+
+  if (!trimmed) return true
+
+  if (format) {
+    return format.pattern.test(trimmed) ? true : format.message
+  }
+
+  return true
 }
 
 async function validate() { return await formRef.value?.validate() }
@@ -104,10 +173,42 @@ function ensureDefaults() {
     if (eff.day == null) eff.day = todayDay
     if (eff.year == null) eff.year = todayYear
   }
+
+  const rc = local.value.resaleCertificate
+  if (rc && !rc.resale && !rc.incorporating && !rc.otherExemption) {
+    rc.resale = true
+  }
 }
 
 // run it once on setup
 ensureDefaults()
+
+type ExemptionValue = 'resale' | 'incorporating' | 'other'
+const exemptionOptions: { label: string; value: ExemptionValue }[] = [
+  { label: 'Resale, in the regular course of business, in the form of tangible personal property.', value: 'resale' },
+  { label: 'Incorporating the same, as material, ingredient or component part, into tangible personal property produced for sale.', value: 'incorporating' },
+  { label: 'Other authorized exemption (describe)', value: 'other' },
+]
+
+const selectedExemption = computed<ExemptionValue>({
+  get() {
+    const rc = local.value.resaleCertificate
+    if (!rc) return 'resale'
+    if (rc.resale) return 'resale'
+    if (rc.incorporating) return 'incorporating'
+    return 'other'
+  },
+  set(value) {
+    const rc = local.value.resaleCertificate ?? (local.value.resaleCertificate = {})
+    rc.resale = value === 'resale'
+    rc.incorporating = value === 'incorporating'
+    if (value !== 'other') {
+      rc.otherExemption = ''
+    } else if (rc.otherExemption === undefined) {
+      rc.otherExemption = ''
+    }
+  },
+})
 </script>
 
 <template>
@@ -138,27 +239,27 @@ ensureDefaults()
         </div>
         <div class="col-12 col-md-8">
           <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserAddress" label="Address *"
-            :rules="[required]" />
+            :rules="[required]" autocomplete="one-time-code" />
         </div>
         <div class="col-12 col-md-4">
-          <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserCity" label="City *"
-            :rules="[required]" />
+          <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserCity" label="City *" :rules="[required]"
+            autocomplete="one-time-code" />
         </div>
         <div class="col-12 col-md-4">
           <q-select v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserState" :options="purchaserRegionOptions"
             :label="purchaserRegionLabel" emit-value map-options :rules="[required]"
-            :disable="!local.resaleCertificate?.purchaserCountry" />
+            :disable="!local.resaleCertificate?.purchaserCountry" autocomplete="one-time-code" />
         </div>
         <div class="col-12 col-md-4">
           <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserZip" :label="purchaserPostalLabel"
-            :rules="purchaserPostalRules" />
+            :rules="purchaserPostalRules" autocomplete="one-time-code" />
         </div>
       </div>
 
       <div class="row q-col-gutter-md q-mt-sm">
         <div class="col-12 col-md-6">
           <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.productDescription"
-            label="Product that you will purchase" />
+            label="Product that you will purchase" :rules="[required]" />
         </div>
         <div class="col-12 col-md-6">
           <q-input v-bind="fieldUi" v-model="local.primaryBusiness" label="Primary type of business" />
@@ -167,14 +268,12 @@ ensureDefaults()
 
       <!-- Exemption reasons -->
       <div class="q-mt-sm">
-        <q-checkbox v-model="local.resaleCertificate!.resale"
-          label="Resale, in the regular course of business, in the form of tangible personal property." />
-        <q-checkbox v-model="local.resaleCertificate!.incorporating"
-          label="Incorporating the same, as material, ingredient or component part, into tangible personal property produced for sale." />
-        <div class="row q-col-gutter-md q-mt-xs">
+        <div class="text-subtitle2">Exemption reason</div>
+        <q-option-group v-model="selectedExemption" :options="exemptionOptions" type="radio" />
+        <div v-if="selectedExemption === 'other'" class="column q-col-gutter-md q-mt-xs">
           <div class="col">
             <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.otherExemption"
-              label="Other authorized exemption (describe)" />
+              label="Other authorized exemption (describe)" :rules="[required]" />
           </div>
         </div>
       </div>
@@ -226,9 +325,6 @@ ensureDefaults()
           <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.signatureTitle"
             label="Title of Authorized Agent *" :rules="[required]" />
         </div>
-        <div class="col-12">
-          <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.signatureDate" label="Signature Date" />
-        </div>
       </div>
 
       <!-- Exempt states and numbers -->
@@ -238,12 +334,12 @@ ensureDefaults()
             v-model="local.exemptStates" label="States registered in (select all that apply)" />
         </div>
         <div class="col-12">
-          <div class="text-caption q-mb-xs">Resale Certificate Number (per state)</div>
+          <div v-if="local.exemptStates.length" class="text-caption q-mb-xs">Resale Certificate Number (per state)</div>
           <div class="row q-col-gutter-md">
             <template v-for="s in local.exemptStates" :key="s">
               <div v-if="s !== 'NY'" class="col-12 col-md-4">
-                <q-input v-bind="fieldUi" :label="`Resale Number for ${s}`" v-model="local.resaleNumbers[s]"
-                  :rules="[resaleNumberRule(s)]" />
+                <q-input v-bind="fieldUi" :label="`Resale Number for ${s} *`" v-model="local.resaleNumbers[s]"
+                  :rules="[resaleNumberRule(s), required]" :mask="resaleMaskFor(s)" :fill-mask="!!resaleMaskFor(s)" />
               </div>
               <div v-else class="col-12 col-md-6">
                 <q-input v-bind="fieldUi" :model-value="'Complete ST‑120 section below'" label="New York" readonly />
@@ -271,7 +367,7 @@ ensureDefaults()
           </div>
           <div class="col-12">
             <q-input v-bind="fieldUi" v-model="local.nySt120.purchaserAddress" label="Purchaser Address *"
-              :rules="[required]" />
+              :rules="[required]" autocomplete="one-time-code" />
           </div>
           <div class="col-12 col-md-6">
             <q-input v-bind="fieldUi" v-model="local.nySt120.nyRegistration" label="NY Registration # *"

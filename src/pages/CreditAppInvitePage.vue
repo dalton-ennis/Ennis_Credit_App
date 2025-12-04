@@ -68,6 +68,7 @@ type BusinessDto = {
   StatementEmail?: string
   AcknowledgementEmail?: string
   Contacts?: Contact[]
+  PoRequired?: boolean
 }
 
 type BusinessSection = {
@@ -94,6 +95,7 @@ type BusinessSection = {
   AcknowledgementEmail?: string
   Contacts?: Contact[]
   contacts?: Contact[]
+  PoRequired: boolean
 }
 
 type CreditApplicationDto = {
@@ -149,6 +151,7 @@ function toBusinessDto(src: CreditForm): BusinessDto {
     InvoiceEmail: sanitize(src.invoiceEmail),
     StatementEmail: sanitize(src.statementEmail),
     AcknowledgementEmail: sanitize(src.AcknowledgementEmail),
+    PoRequired: !!src.poRequired
   }
 
   if (src.mailingDifferent && src.mailing) {
@@ -276,6 +279,7 @@ function mapBusinessToForm(payload: BusinessSection, target: CreditForm) {
   target.invoiceEmail = sanitize(payload.InvoiceEmail)
   target.statementEmail = sanitize(payload.StatementEmail)
   target.AcknowledgementEmail = sanitize(payload.AcknowledgementEmail)
+  target.poRequired = payload.PoRequired ?? false
 
   const payloadContacts = payload.Contacts ?? payload.contacts
   if (Array.isArray(payloadContacts) && payloadContacts.length) {
@@ -414,29 +418,40 @@ watch(
   { immediate: true }
 )
 
+watch(() => form.value.requestTaxExempt, async () => {
+  const payload = {
+    requestLineOfCredit: form.value.requestLineOfCredit,
+    requestTaxExempt: form.value.requestTaxExempt,
+  }
+
+  const res = await axios.patch(
+    `${API_BASE}/api/apps/${guid.value}/requests`,
+    payload,
+    { headers: { "If-Match": etag.value } }
+  )
+
+  etag.value = res.data.ETag
+})
+
+watch(() => form.value.requestLineOfCredit, async () => {
+  const payload = {
+    requestLineOfCredit: form.value.requestLineOfCredit,
+    requestTaxExempt: form.value.requestTaxExempt,
+  }
+
+  const res = await axios.patch(
+    `${API_BASE}/api/apps/${guid.value}/requests`,
+    payload,
+    { headers: { "If-Match": etag.value } }
+  )
+
+  etag.value = res.data.ETag
+})
 </script>
 
 <template>
   <q-page class="q-pa-md bg-grey-1">
     <div class="max-w-screen-xl q-mx-auto">
-      <!-- <q-banner v-if="hasInvite" class="bg-primary text-white q-mb-md" rounded>
-        <div>
-          <div class="text-subtitle2 text-weight-bold">Invite Link Details</div>
-          <div>Plant: <span class="text-weight-medium">{{ plant }}</span></div>
-          <div>Application ID: <span class="text-weight-medium">{{ guid }}</span></div>
-        </div>
-        <template #action>
-          <q-btn flat color="white" label="Reload" @click="fetchApplication" :loading="loading" />
-        </template>
-</q-banner> -->
-
-      <!-- <q-banner v-if="error" class="bg-negative text-white q-mb-md" rounded>
-        <div>{{ error }}</div>
-        <template #action>
-          <q-btn flat color="white" label="Retry" @click="fetchApplication" />
-        </template>
-      </q-banner> -->
-
       <q-card flat bordered class="q-mb-md" v-if="loading">
         <q-card-section class="row items-center q-gutter-sm">
           <q-spinner color="primary" size="24px" />

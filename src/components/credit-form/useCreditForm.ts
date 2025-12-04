@@ -38,7 +38,7 @@ export function useCreditForm() {
         // Credit app
         creditAmount: null,
         creditDisclosureAck: false,
-        owners: [{ name: '', title: '', ssn: '', homeAddress: EMPTY_ADDR() }],
+        owners: [{ name: '', title: '', ssn: '', phone: '', email: '', homeAddress: EMPTY_ADDR() }],
         bank: {
             name: '',
             accountNo: '',

@@ -20,6 +20,8 @@ export type Owner = {
     ssn: string
     fullTime?: boolean
     homeAddress?: Address
+    phone?: string
+    email?: string
 }
 
 export type TradeRef = {
