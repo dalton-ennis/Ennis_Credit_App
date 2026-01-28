@@ -2,7 +2,7 @@
 import { ref, watch, onMounted, computed } from 'vue'
 import type { CreditForm } from '../types'
 import { stateOptions, countryOptions, provinceOptions } from '../utilities'
-import { dayRule, monthRule, required, yearRule, zipRule, canadianPostalRule } from 'src/utility/validators'
+import { required, zipRule, canadianPostalRule } from 'src/utility/validators'
 import type { QForm, ValidationRule } from 'quasar'
 import { fieldUi } from '../utilities';
 
@@ -43,6 +43,7 @@ const purchaserRegionOptions = computed(() => purchaserIsCA.value ? provinceOpti
 const purchaserRegionLabel = computed(() => purchaserIsCA.value ? 'Province/Territory *' : 'State *')
 const purchaserPostalLabel = computed(() => purchaserIsCA.value ? 'Postal Code *' : 'ZIP *')
 const purchaserPostalRules = computed(() => purchaserIsCA.value ? [required, canadianPostalRule] : [required, zipRule])
+const exemptStatesRule: ValidationRule = (val) => (Array.isArray(val) && val.length > 0) || 'Select at least one state'
 
 watch(() => local.value.resaleCertificate?.purchaserCountry, () => {
   if (!local.value.resaleCertificate) return
@@ -221,7 +222,7 @@ const selectedExemption = computed<ExemptionValue>({
         The undersigned vendee hereby certifies that it is a regularly licensed retailer under the Law(s) of the
         state(s)
         indicated and that all tangible personal property purchased from: <b>ENNIS, INC. AND AFFILIATES AS DEFINED IN
-          printtermsandconditions.com</b>
+          <a href="https://printtermsandconditions.com" target="_blank" rel="noopener">printtermsandconditions.com</a></b>
       </div>
 
       <!-- Purchaser info (prefilled from Business Info) -->
@@ -231,7 +232,8 @@ const selectedExemption = computed<ExemptionValue>({
             :rules="[required]" />
         </div>
         <div class="col-12 col-md-6">
-          <q-input v-bind="fieldUi" v-model="local.customerNumber" label="Customer Number" />
+          <q-input v-bind="fieldUi" v-model.number="local.resaleCertificate!.customerNumber" label="Customer Number"
+            type="number" />
         </div>
         <div class="col-12 col-md-4">
           <q-select v-bind="fieldUi" v-model="local.resaleCertificate!.purchaserCountry" label="Country *"
@@ -296,26 +298,6 @@ const selectedExemption = computed<ExemptionValue>({
         </ul>
       </div>
 
-      <!-- Effective date and signatures -->
-      <div class="row q-col-gutter-md q-mt-sm">
-        <div class="col-12 col-md-6">
-          <div class="row q-col-gutter-sm">
-            <div class="col-4">
-              <q-input v-bind="fieldUi" type="number" v-model.number="local.resaleCertificate!.effectiveDate!.month"
-                label="Month *" :rules="[required, monthRule]" />
-            </div>
-            <div class="col-4">
-              <q-input v-bind="fieldUi" type="number" v-model.number="local.resaleCertificate!.effectiveDate!.day"
-                label="Day *" :rules="[required, dayRule]" />
-            </div>
-            <div class="col-4">
-              <q-input v-bind="fieldUi" type="number" v-model.number="local.resaleCertificate!.effectiveDate!.year"
-                label="Year *" :rules="[required, yearRule]" />
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div class="row q-col-gutter-md q-mt-sm">
         <div class="col-12 col-md-6">
           <q-input v-bind="fieldUi" v-model="local.resaleCertificate!.signatureName" label="Name of Purchaser *"
@@ -331,7 +313,8 @@ const selectedExemption = computed<ExemptionValue>({
       <div class="row q-col-gutter-md q-mt-md">
         <div class="col-12 col-md-6">
           <q-select v-bind="fieldUi" use-chips multiple emit-value map-options :options="exemptOptions"
-            v-model="local.exemptStates" label="States registered in (select all that apply)" />
+            v-model="local.exemptStates" label="States registered in (select all that apply)"
+            :rules="[exemptStatesRule]" />
         </div>
         <div class="col-12">
           <div v-if="local.exemptStates.length" class="text-caption q-mb-xs">Resale Certificate Number (per state)</div>

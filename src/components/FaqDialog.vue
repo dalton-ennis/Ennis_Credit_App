@@ -121,6 +121,18 @@ const sections: FaqSection[] = [
     ]
   }
 ]
+
+const linkify = (text: string): string => {
+  if (!text) return ''
+  const withUrls = text.replace(/https?:\/\/[^\s)]+/g, (match) => {
+    const href = match
+    return `<a href="${href}" target="_blank" rel="noopener">${href}</a>`
+  })
+  return withUrls.replace(/([A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,})/g, (_m, email) => {
+    const href = `mailto:${email}`
+    return `<a href="${href}">${email}</a>`
+  })
+}
 </script>
 
 <template>
@@ -139,7 +151,7 @@ const sections: FaqSection[] = [
               expand-icon="expand_more" icon="help_outline" :label="item.q">
               <q-card>
                 <q-card-section>
-                  <div class="text-body1">{{ item.a }}</div>
+                  <div class="text-body1" v-html="linkify(item.a)"></div>
                 </q-card-section>
               </q-card>
             </q-expansion-item>

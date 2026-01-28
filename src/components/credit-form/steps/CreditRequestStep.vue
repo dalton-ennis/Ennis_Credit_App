@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, defineExpose, onMounted, nextTick, computed } from 'vue'
+import { ref, watch, onMounted, nextTick, computed } from 'vue'
 import type { CreditForm, Owner, Address, Bank, TradeRef } from '../types'
 import type { QForm } from 'quasar'
 import { stateOptions, provinceOptions, countryOptions } from '../utilities'
@@ -23,26 +23,51 @@ const emptyBank = (): Bank => ({ name: '', accountNo: '', phone: '', fax: '', em
 const emptyRef = (): TradeRef => ({ name: '', accountNo: '', phone: '', fax: '', email: '', address: ensureAddress() })
 
 // Local editable copies
+const primeContact = props.modelValue.contacts?.[0]
 const owners = ref<Owner[]>(
   (props.modelValue.owners?.length ? props.modelValue.owners : [emptyOwner()])
     .map(o => ({ ...o, homeAddress: ensureAddress(o.homeAddress) }))
+    .map((o, idx) => {
+      if (idx === 0 && primeContact) {
+        if (!o.name) o.name = primeContact.name || ''
+        if (!o.title) o.title = primeContact.title || ''
+        if (!o.email) o.email = primeContact.email || ''
+      }
+      return o
+    })
 )
+const clamp = (num: number, min: number, max: number) => Math.min(max, Math.max(min, num))
+const parseYearsMonths = (val?: string) => {
+  const matches = (val || '').match(/\d+/g) || []
+  const years = clamp(parseInt(matches[0] || '0', 10) || 0, 0, 100)
+  const months = clamp(parseInt(matches[1] || '1', 10) || 1, 1, 12)
+  return { years, months }
+}
+const requiredSelect = (val: unknown) => val === 0 || val === '0' || !!val || 'Required'
+const yearOptions = Array.from({ length: 101 }, (_, i) => ({ label: `${i}`, value: i }))
+const monthOptions = Array.from({ length: 12 }, (_, i) => {
+  const val = i + 1
+  return { label: `${val}`, value: val }
+})
+const parsedDuration = parseYearsMonths(props.modelValue.yearsInBusiness)
+const yearsInBusinessYears = ref<number>(parsedDuration.years)
+const yearsInBusinessMonths = ref<number>(parsedDuration.months)
 const bank = ref<Bank>(props.modelValue.bank ? { ...props.modelValue.bank, address: ensureAddress(props.modelValue.bank.address) } : emptyBank())
 const refs = ref<TradeRef[]>(
   props.modelValue.tradeRefs?.length ? props.modelValue.tradeRefs.map(r => ({ ...r, address: ensureAddress(r.address) }))
     : [emptyRef(), emptyRef(), emptyRef()]
 )
-const yearsInBusiness = ref<string>(props.modelValue.yearsInBusiness ?? '')
 const creditAmount = ref<number | null>(props.modelValue.creditAmount ?? null)
+const yearsInBusinessDisplay = computed(() => `${yearsInBusinessYears.value} years ${yearsInBusinessMonths.value} months`)
 
 // Sync to parent on change
-watch([owners, bank, refs, yearsInBusiness, creditAmount], () => {
+watch([owners, bank, refs, yearsInBusinessYears, yearsInBusinessMonths, creditAmount], () => {
   emit('update:modelValue', {
     ...props.modelValue,
     owners: owners.value.map(o => ({ ...o, homeAddress: o.homeAddress ? { ...o.homeAddress } : undefined })),
     bank: { ...bank.value, address: bank.value.address ? { ...bank.value.address } : undefined },
     tradeRefs: refs.value.map(r => ({ ...r, address: r.address ? { ...r.address } : undefined })),
-    yearsInBusiness: yearsInBusiness.value,
+    yearsInBusiness: yearsInBusinessDisplay.value,
     creditAmount: creditAmount.value,
   })
 }, { deep: true })
@@ -206,10 +231,19 @@ defineExpose({ validate })
       <!-- Meta and Credit Amount -->
       <div class="row q-col-gutter-md q-pl-md q-pr-md">
         <div class="col-12 col-md-6">
-          <q-input v-bind="fieldUi" v-model="yearsInBusiness" label="How Long Have You Been in Business? *"
-            :rules="[required]" />
+          <div class="text-body2 q-mb-xs">How Long Have You Been in Business? *</div>
+          <div class="row q-col-gutter-sm">
+            <div class="col-6">
+              <q-select v-bind="fieldUi" v-model="yearsInBusinessYears" :options="yearOptions" label="Years" emit-value
+                map-options :rules="[requiredSelect]" />
+            </div>
+            <div class="col-6">
+              <q-select v-bind="fieldUi" v-model="yearsInBusinessMonths" :options="monthOptions" label="Months"
+                emit-value map-options :rules="[requiredSelect]" />
+            </div>
+          </div>
         </div>
-        <div class="col-12 col-md-6">
+        <div class="col-12 col-md-6 q-mt-lg">
           <q-input v-bind="fieldUi" v-model.number="creditAmount" label="Amount of Credit Requested *" type="number"
             prefix="$" :rules="[required]" />
         </div>
@@ -296,7 +330,7 @@ defineExpose({ validate })
             Ennis Inc. to make the necessary inquiries with bank/trade references, and to obtain credit reports
             individually (if applicable) and/or financial statements from Company in the extension or continuation of
             credit terms. Applicant’s signature or first submitted order also attests acceptance of Ennis Inc. trade
-            policies, individual facility terms, and the terms and conditions set out at printtermsandconditions.com.
+            policies, individual facility terms, and the terms and conditions set out at <a href="https://printtermsandconditions.com" target="_blank" rel="noopener">printtermsandconditions.com</a>.
           </p>
 
           <!-- <div class="text-subtitle2 q-mb-sm">Personal Guarantee</div>

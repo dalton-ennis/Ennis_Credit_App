@@ -31,6 +31,7 @@ export function useCreditForm() {
         invoiceEmail: '',
         statementEmail: '',
         AcknowledgementEmail: '',
+        isDocusignProduction: false,
         // Branching
         requestLineOfCredit: true,
         requestTaxExempt: true,
@@ -71,6 +72,7 @@ export function useCreditForm() {
             signatureName: '',
             signatureTitle: '',
             signatureDate: '',
+            customerNumber: null,
         },
         nySt120: {
             purchaserName: '',

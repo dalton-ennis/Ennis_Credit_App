@@ -33,7 +33,10 @@ const loading = ref(false)
 const error = ref<string | null>(null)
 const savingBusiness = ref(false)
 const savingCredit = ref(false)
+const savingTax = ref(false)
 const etag = ref<string | null>(null)
+const completed = ref(false)
+const completedStatus = ref('')
 
 const API_BASE = import.meta.env.VITE_BE_ENDPOINT ?? 'https://localhost:7009'
 const guid = computed(() => route.params.guid as string | undefined)
@@ -86,6 +89,52 @@ type CreditSectionDto = {
   Owners: CreditOwnerDto[]
   TradeRefs: CreditTradeRefDto[]
   Bank: CreditBankDto
+}
+
+type ExemptStateDto = {
+  State: string
+  ResaleNumber?: string | null
+}
+
+type DateDto = {
+  Day?: number
+  Month?: number
+  Year?: number
+}
+
+type ResaleCertificateDto = {
+  Resale?: boolean
+  Incorporating?: boolean
+  ProductDescription?: string
+  OtherExemption?: string
+  EffectiveDate?: DateDto | null
+  PurchaserName?: string
+  PurchaserAddress?: string
+  PurchaserCity?: string
+  PurchaserState?: string
+  PurchaserZip?: string
+  PurchaserCountry?: string
+  SignatureName?: string
+  SignatureTitle?: string
+  SignatureDate?: string
+  CustomerNumber?: number | null
+}
+
+type NySt120Dto = {
+  PurchaserName?: string
+  PurchaserAddress?: string
+  PurchaserCountry?: string
+  NyRegistration?: string
+  VendorName?: string
+  SignerName?: string
+  SignerTitle?: string
+  SignerDate?: string
+}
+
+type TaxExemptionDto = {
+  ExemptStates?: ExemptStateDto[]
+  ResaleCertificate?: ResaleCertificateDto
+  NySt120?: NySt120Dto
 }
 
 type BusinessDto = {
@@ -141,8 +190,14 @@ type BusinessSection = {
   PoRequired: boolean
 }
 
+type Plant = {
+  Name: string,
+  Logo: string
+}
+
 type CreditApplicationDto = {
   ETag?: string | null
+  Status?: string
   Business?: BusinessSection
   Contacts?: Contact[]
   Mailing?: Address
@@ -151,11 +206,17 @@ type CreditApplicationDto = {
   TradeRefs?: TradeRef[]
   ResaleCertificate?: ResaleCertificate
   NySt120?: CreditForm['nySt120']
+  TaxExemption?: TaxExemptionDto
   Signers?: Signer[]
   RequestLineOfCredit?: boolean
   RequestTaxExempt?: boolean
   CreditAmount?: number | null
   CreditDisclosureAck?: boolean
+  Plant?: Plant
+  CsaName?: string
+  CsaEmail?: string
+  CustomerFinanceEmail?: string
+  CustomerFinanceName?: string
 } & Partial<CreditForm>
 
 const entityTypeOptions: CreditForm['entityType'][] = ['Proprietorship', 'Partnership', 'Corporation', 'LLC']
@@ -216,6 +277,27 @@ const readStringField = (source: Record<string, unknown>, key: string, fallback 
   const pascal = source[pascalKey]
   return typeof pascal === 'string' ? pascal : fallback
 }
+
+const readBooleanField = (source: Record<string, unknown>, key: string): boolean | undefined => {
+  const camel = source[key]
+  if (typeof camel === 'boolean') return camel
+  const pascalKey = key.charAt(0).toUpperCase() + key.slice(1)
+  const pascal = source[pascalKey]
+  if (typeof pascal === 'boolean') return pascal
+  return undefined
+}
+
+const toNumeric = (value: unknown): number | null => {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    const parsed = Number(trimmed)
+    return Number.isFinite(parsed) ? parsed : null
+  }
+  return null
+}
+
 const readAddressObject = (source: Record<string, unknown>) => {
   const camel = source['address']
   if (camel && typeof camel === 'object') return camel as Record<string, unknown>
@@ -329,6 +411,49 @@ function toCreditDto(src: CreditForm): CreditSectionDto {
   }
 }
 
+function toTaxDto(src: CreditForm): TaxExemptionDto {
+  const exemptStates = Array.isArray(src.exemptStates) ? src.exemptStates : []
+  const exemptPayload: ExemptStateDto[] = exemptStates
+    .map(state => ({
+      State: sanitize(state).toUpperCase(),
+      ResaleNumber: sanitize(src.resaleNumbers?.[state]),
+    }))
+    .filter(entry => !!entry.State)
+  const rc = src.resaleCertificate ?? {}
+  const ny = src.nySt120 ?? {}
+  const numericCustomer = toNumeric(
+    rc.customerNumber ?? src.customerNumber ?? null
+  )
+  return {
+    ExemptStates: exemptPayload,
+    ResaleCertificate: {
+      Resale: !!rc.resale,
+      Incorporating: !!rc.incorporating,
+      ProductDescription: sanitize(rc.productDescription),
+      OtherExemption: sanitize(rc.otherExemption),
+      PurchaserName: sanitize(rc.purchaserName),
+      PurchaserAddress: sanitize(rc.purchaserAddress),
+      PurchaserCity: sanitize(rc.purchaserCity),
+      PurchaserState: sanitize(rc.purchaserState),
+      PurchaserZip: sanitize(rc.purchaserZip),
+      PurchaserCountry: sanitize(rc.purchaserCountry),
+      SignatureName: sanitize(rc.signatureName),
+      SignatureTitle: sanitize(rc.signatureTitle),
+      CustomerNumber: numericCustomer,
+    },
+    NySt120: {
+      PurchaserName: sanitize(ny.purchaserName),
+      PurchaserAddress: sanitize(ny.purchaserAddress),
+      PurchaserCountry: sanitize(ny.purchaserCountry),
+      NyRegistration: sanitize(ny.nyRegistration),
+      VendorName: sanitize(ny.vendorName),
+      SignerName: sanitize(ny.signerName),
+      SignerTitle: sanitize(ny.signerTitle),
+      SignerDate: sanitize(ny.signerDate),
+    },
+  }
+}
+
 const headerValueToString = (value: unknown): string | null => {
   if (value == null) return null
 
@@ -394,6 +519,16 @@ async function onNext() {
     return
   }
 
+  if (wizard.current === 'tax') {
+    if (savingTax.value) return
+    const valid = (await stepper.validateCurrentStep?.()) ?? true
+    if (!valid) return
+    const saved = await saveTaxStep()
+    if (!saved) return
+    stepper.next?.()
+    return
+  }
+
   await stepper.nextValidated?.()
 }
 
@@ -405,9 +540,18 @@ async function fetchApplication() {
   if (!guid.value) return
   loading.value = true
   error.value = null
+  console.log(guid.value)
   try {
     const response = await axios.get<CreditApplicationDto>(`${API_BASE}/api/apps/${guid.value}`)
-    console.log(response.data, 'Data')
+
+    const statusValue = readStringField(response.data as Record<string, unknown>, 'status')
+    const normalizedStatus = statusValue.trim().toLowerCase()
+    completedStatus.value = statusValue
+    completed.value = normalizedStatus === 'signed'
+    if (completed.value) {
+      return
+    }
+
     applyRemoteForm(response.data)
     const headerTag = readEtag(response.headers)
     const bodyTag = ensureQuotedEtag(response.data.ETag)
@@ -487,9 +631,95 @@ function mapBusinessToForm(payload: BusinessSection, target: CreditForm) {
   }
 }
 
+function mapTaxToForm(payload: TaxExemptionDto, target: CreditForm) {
+  const rawStatesInput = payload.ExemptStates ?? (payload as Record<string, unknown>).exemptStates
+  const rawStates = Array.isArray(rawStatesInput) ? rawStatesInput : []
+  const states: string[] = []
+  const resaleNumbers: Record<string, string> = {}
+  for (const entry of rawStates) {
+    if (!entry) continue
+    const source = entry as Record<string, unknown>
+    const code = sanitize(readStringField(source, 'state')).toUpperCase()
+    if (!code) continue
+    states.push(code)
+    const num = sanitize(readStringField(source, 'resaleNumber'))
+    if (num) resaleNumbers[code] = num
+  }
+  target.exemptStates = states
+  target.resaleNumbers = resaleNumbers
+
+  const rcSource =
+    (payload.ResaleCertificate as Record<string, unknown> | undefined) ??
+    (payload as Record<string, unknown>).resaleCertificate as Record<string, unknown> | undefined
+  if (rcSource) {
+    if (!target.resaleCertificate) {
+      target.resaleCertificate = {
+        resale: false,
+        incorporating: false,
+        productDescription: '',
+        otherExemption: '',
+        purchaserName: '',
+        purchaserAddress: '',
+        purchaserCity: '',
+        purchaserState: '',
+        purchaserZip: '',
+        purchaserCountry: '',
+        signatureName: '',
+        signatureTitle: '',
+        signatureDate: '',
+      }
+    }
+    const rc = target.resaleCertificate
+    if (!rc) return
+    rc.resale = !!(rcSource['Resale'] ?? rcSource['resale'])
+    rc.incorporating = !!(rcSource['Incorporating'] ?? rcSource['incorporating'])
+    rc.productDescription = sanitize(readStringField(rcSource, 'productDescription'))
+    rc.otherExemption = sanitize(readStringField(rcSource, 'otherExemption'))
+    rc.purchaserName = sanitize(readStringField(rcSource, 'purchaserName'))
+    rc.purchaserAddress = sanitize(readStringField(rcSource, 'purchaserAddress'))
+    rc.purchaserCity = sanitize(readStringField(rcSource, 'purchaserCity'))
+    rc.purchaserState = sanitize(readStringField(rcSource, 'purchaserState'))
+    rc.purchaserZip = sanitize(readStringField(rcSource, 'purchaserZip'))
+    rc.purchaserCountry = sanitize(readStringField(rcSource, 'purchaserCountry'))
+    rc.signatureName = sanitize(readStringField(rcSource, 'signatureName'))
+    rc.signatureTitle = sanitize(readStringField(rcSource, 'signatureTitle'))
+    const rawCustomerNumber = rcSource['CustomerNumber'] ?? rcSource['customerNumber']
+    const numericCustomer = toNumeric(rawCustomerNumber)
+    rc.customerNumber = numericCustomer ?? null
+    target.customerNumber = numericCustomer != null ? String(numericCustomer) : ''
+  }
+
+  const nySource =
+    (payload.NySt120 as Record<string, unknown> | undefined) ??
+    (payload as Record<string, unknown>).nySt120 as Record<string, unknown> | undefined
+  if (nySource) {
+    target.nySt120 = {
+      purchaserName: sanitize(readStringField(nySource, 'purchaserName')),
+      purchaserAddress: sanitize(readStringField(nySource, 'purchaserAddress')),
+      purchaserCountry: sanitize(readStringField(nySource, 'purchaserCountry')),
+      nyRegistration: sanitize(readStringField(nySource, 'nyRegistration')),
+      vendorName: sanitize(readStringField(nySource, 'vendorName')),
+      signerName: sanitize(readStringField(nySource, 'signerName')),
+      signerTitle: sanitize(readStringField(nySource, 'signerTitle')),
+      signerDate: sanitize(readStringField(nySource, 'signerDate')),
+    }
+  }
+}
+function normalizePlantDto(raw: Record<string, unknown>) {
+  const name = raw.Name ?? raw.Name
+  const logo = raw.Logo ?? raw.logo
+
+  return {
+    Name: typeof name === 'string' ? name : '',
+    Logo: typeof logo === 'string' ? logo : '',
+  }
+}
+
+
 function applyRemoteForm(payload: CreditApplicationDto | undefined) {
   if (!payload) return
   const safe = JSON.parse(JSON.stringify(payload)) as CreditApplicationDto
+  const safeRecord = safe as Record<string, unknown>
   const nextForm = cloneCreditForm(form.value)
 
   if (safe.RequestLineOfCredit !== undefined)
@@ -512,6 +742,13 @@ function applyRemoteForm(payload: CreditApplicationDto | undefined) {
 
   if (safe.Business) mapBusinessToForm(safe.Business, nextForm)
 
+  nextForm.csaName = sanitize(readStringField(safeRecord, 'csaName'))
+  nextForm.csaEmail = sanitize(readStringField(safeRecord, 'csaEmail'))
+  nextForm.customerFinanceEmail = sanitize(readStringField(safeRecord, 'customerFinanceEmail'))
+  nextForm.customerFinanceName = sanitize(readStringField(safeRecord, 'customerFinanceName'))
+  const docusignProduction = readBooleanField(safeRecord, 'isDocusignProduction')
+  if (docusignProduction !== undefined) nextForm.isDocusignProduction = docusignProduction
+
   if (Array.isArray(safe.Contacts) && safe.Contacts.length)
     nextForm.contacts = safe.Contacts.map(contact => ({ ...contact }))
 
@@ -526,9 +763,33 @@ function applyRemoteForm(payload: CreditApplicationDto | undefined) {
 
   if (safe.Bank) nextForm.bank = normalizeBankDto(safe.Bank as Record<string, unknown>)
 
-  if (safe.ResaleCertificate) nextForm.resaleCertificate = { ...safe.ResaleCertificate }
+  const plantPayload =
+    safe.Plant ??
+    (safe as Record<string, unknown>).Plant
 
-  if (safe.NySt120) nextForm.nySt120 = { ...safe.NySt120 }
+
+  if (plantPayload) {
+    nextForm.Plant = normalizePlantDto(plantPayload as Record<string, unknown>)
+    wizard.plantLogo = nextForm.Plant.Logo
+    wizard.plantName = nextForm.Plant.Name
+  }
+
+  const taxPayload = safe.TaxExemption ?? (safe as Record<string, unknown>).taxExemption
+  if (taxPayload) {
+    mapTaxToForm(taxPayload as TaxExemptionDto, nextForm)
+  } else {
+    const fallbackTax: TaxExemptionDto = {}
+    let hasFallback = false
+    if (safe.ResaleCertificate) {
+      fallbackTax.ResaleCertificate = safe.ResaleCertificate as unknown as ResaleCertificateDto
+      hasFallback = true
+    }
+    if (safe.NySt120) {
+      fallbackTax.NySt120 = safe.NySt120 as unknown as NySt120Dto
+      hasFallback = true
+    }
+    if (hasFallback) mapTaxToForm(fallbackTax, nextForm)
+  }
 
   form.value = nextForm
 }
@@ -538,7 +799,10 @@ function resetInviteState() {
   error.value = null
   savingBusiness.value = false
   savingCredit.value = false
+  savingTax.value = false
   etag.value = null
+  completed.value = false
+  completedStatus.value = ''
 }
 
 async function saveBusinessStep() {
@@ -629,6 +893,50 @@ async function saveCreditStep() {
   }
 }
 
+async function saveTaxStep() {
+  if (!guid.value) {
+    $q.notify({ type: 'negative', message: 'Invite link is missing an application id.' })
+    return false
+  }
+  const ifMatch = ensureQuotedEtag(etag.value)
+  if (!ifMatch) {
+    $q.notify({ type: 'negative', message: 'Missing ETag from server. Reload the application and try again.' })
+    return false
+  }
+
+  savingTax.value = true
+  try {
+    const payload = toTaxDto(form.value)
+    const response = await axios.patch<{ ETag?: string }>(
+      `${API_BASE}/api/apps/${guid.value}/tax`,
+      payload,
+      { headers: { 'If-Match': ifMatch } }
+    )
+    let nextEtag = readEtag(response.headers)
+    if (!nextEtag) nextEtag = ensureQuotedEtag(response.data?.ETag)
+    if (nextEtag) etag.value = nextEtag
+    $q.notify({ type: 'positive', message: 'Tax exemption information saved.' })
+    return true
+  } catch (err) {
+    let message = 'Unable to save tax exemption information.'
+    if (axios.isAxiosError(err)) {
+      if (err.response?.status === 409) {
+        message = 'This application was updated elsewhere. Reload and try again.'
+      } else if (typeof err.response?.data === 'string') {
+        message = err.response.data
+      } else if (err.message) {
+        message = err.message
+      }
+    } else if (err instanceof Error) {
+      message = err.message
+    }
+    $q.notify({ type: 'negative', message })
+    return false
+  } finally {
+    savingTax.value = false
+  }
+}
+
 watch(
   () => guid.value,
   (newGuid) => {
@@ -687,12 +995,23 @@ watch(() => form.value.requestLineOfCredit, async (val, prev) => {
         </q-card-section>
       </q-card>
 
-      <div v-if="!loading" class="row q-col-gutter-md" :class="{ 'opacity-50 pointer-events-none': loading }">
+      <q-card flat bordered class="q-pa-lg" v-if="!loading && completed">
+        <div class="text-h5 text-weight-medium q-mb-sm">Application completed</div>
+        <div class="text-body2 text-grey-7">
+          We have received your signed application. Expect a response within 2-3 business days.
+        </div>
+        <div class="text-caption text-grey-6 q-mt-md" v-if="completedStatus">
+          Status: {{ completedStatus }}
+        </div>
+      </q-card>
+
+      <div v-else-if="!loading" class="row q-col-gutter-md" :class="{ 'opacity-50 pointer-events-none': loading }">
         <div class="col-12 col-md-9">
-          <CreditAppStepper ref="stepperRef" v-model="form" />
+          <CreditAppStepper ref="stepperRef" v-model="form" :etag="etag" />
         </div>
         <div class="col-12 col-md-3">
-          <CommandConsole v-model="form" @next="onNext" @back="onBack" :next-busy="savingBusiness || savingCredit" />
+          <CommandConsole v-model="form" @next="onNext" @back="onBack"
+            :next-busy="savingBusiness || savingCredit || savingTax" />
         </div>
       </div>
     </div>

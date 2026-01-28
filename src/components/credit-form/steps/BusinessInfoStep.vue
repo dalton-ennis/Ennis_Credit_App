@@ -156,7 +156,7 @@ function removeContact(i: number) {
     }
 }
 function contactLabel(i: number) {
-    return i === 0 ? 'Main Contact' : `Additional Contact ${i}`
+    return i === 0 ? 'Owner' : `Additional Contact ${i}`
 }
 
 // Country-driven UI behavior

@@ -5,12 +5,11 @@ import {
     CreditRequestStep,
     TaxExemptionStep,
     SignatureStep,
-    ReviewStep
 } from './steps'
 import type { CreditForm } from './types'
 import { useWizardStore } from 'src/stores/wizard'
 
-const props = defineProps<{ modelValue: CreditForm }>()
+const props = defineProps<{ modelValue: CreditForm; etag?: string | null }>()
 const emit = defineEmits(['update:modelValue'])
 const form = computed({
     get: () => props.modelValue,
@@ -22,7 +21,6 @@ type StepId =
     | 'credit'
     | 'tax'
     | 'sign'
-    | 'review'
 
 type StepDef = {
     id: StepId
@@ -38,7 +36,6 @@ const allSteps: StepDef[] = [
     { id: 'credit', title: 'Credit Request', component: CreditRequestStep, show: f => !!f.requestLineOfCredit, icon: 'request_quote' },
     { id: 'tax', title: 'Sales Tax Exemption', component: TaxExemptionStep, show: f => !!f.requestTaxExempt, icon: 'receipt_long' },
     { id: 'sign', title: 'Sign & Consent', component: SignatureStep, icon: "draw" },
-    { id: 'review', title: 'Review & Submit', component: ReviewStep, icon: "fact_check" },
 ]
 interface StepComponent extends ComponentPublicInstance {
     validate?: () => Promise<boolean>
@@ -97,7 +94,7 @@ defineExpose({ next, back, current, nextValidated, validateCurrentStep })
         <q-stepper v-model="current" animated color="primary" header-class="bg-grey-2 q-pa-sm rounded-borders">
             <template v-for="(s, i) in steps" :key="s.id">
                 <q-step :name="s.id" :done="i < currentIndex" :title="s.title" :icon="s.icon">
-                    <component :is="s.component" v-model="form" @next="next" @back="back"
+                    <component :is="s.component" v-model="form" :etag="props.etag" @next="next" @back="back"
                         :ref="(el: ComponentPublicInstance | null) => setStepRef(s.id, el)" />
                 </q-step>
             </template>

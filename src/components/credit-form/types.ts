@@ -68,6 +68,7 @@ export type ResaleCertificate = {
     signatureDate?: string
     resale?: boolean
     incorporating?: boolean
+    customerNumber?: number | null
 }
 
 export type Signer = {
@@ -78,8 +79,12 @@ export type Signer = {
     signatureDataUrl?: string
 }
 
+type Plant = {
+    Name: string,
+    Logo: string
+}
+
 export type CreditForm = {
-    // business
     companyName: string
     dbaName?: string
     phone: string
@@ -103,7 +108,8 @@ export type CreditForm = {
     invoiceEmail?: string
     statementEmail?: string
     AcknowledgementEmail?: string
-
+    isDocusignProduction?: boolean
+    Plant?: Plant
     // branching
     requestLineOfCredit: boolean
     requestTaxExempt: boolean
@@ -122,5 +128,9 @@ export type CreditForm = {
     nySt120: NYSt120
 
     // signing
+    csaName?: string
+    csaEmail?: string
+    customerFinanceEmail?: string
+    customerFinanceName?: string
     signers: Signer[]
 }

@@ -3,70 +3,96 @@ import { onMounted, ref, computed } from 'vue'
 import axios from 'axios'
 import { useQuasar } from 'quasar'
 import type { CreditForm } from '../types'
+import { useRoute } from 'vue-router'
 
-const props = defineProps<{ modelValue: CreditForm }>()
+const props = defineProps<{ modelValue: CreditForm; etag?: string | null }>()
 
+const route = useRoute()
 const $q = useQuasar()
 
-/** Config **/
-const DOCUSIGN_TEMPLATE_ID = 'f11e722d-9920-4eaf-9de6-ef0279ce22d7'
 const API_BASE = import.meta.env.VITE_BE_ENDPOINT ?? 'https://localhost:7009'
 
-/** UI state **/
 const loading = ref(false)
 const errorMsg = ref<string | null>(null)
 const signingUrl = ref<string | null>(null)
-const requested = ref(false) // ensure single fetch per enter
+const requested = ref(false)
 
-/** Field mapping -> DocuSign TextTabs **/
-const dsFields = computed(() => {
-    const f = props.modelValue
-    // Prefer explicit country; default to "USA" to match DS tab
-    const country = (f.country || 'USA').toUpperCase()
-    return {
-        companyName: f.companyName || '',
-        companyAddress: f.address || '',
-        companyCity: f.city || '',
-        companyState: f.state || '',
-        companyZip: f.zip || '',
-        companyCountry: country,
-        companyPhone: f.phone || ''
-    }
-})
-
-/** Recipient (you can swap to your actual recipient fields on the form) **/
 const recipientEmail = computed(() => props.modelValue.email || 'customer@example.com')
 const recipientName = computed(() => props.modelValue.companyName || 'Customer')
 
-type PrefillRequest = {
-    templateId: string
-    recipientEmail: string
-    recipientName: string
-    fields: Record<string, string>
-}
 type PrefillResponse = {
-    signingUrl: string
+    url: string
+    envelopeId?: string
+    statusDateTime?: string
+    status?: string
+}
+
+const ensureQuotedEtag = (value: string | null | undefined): string | null => {
+    if (!value) return null
+    const trimmed = value.trim()
+    if (!trimmed) return null
+    const hasQuotes = trimmed.startsWith('"') && trimmed.endsWith('"')
+    return hasQuotes ? trimmed : `"${trimmed}"`
 }
 
 async function createPrefill() {
     loading.value = true
     errorMsg.value = null
+
     try {
-        const payload: PrefillRequest = {
-            templateId: DOCUSIGN_TEMPLATE_ID,
+        const primaryOwner = props.modelValue.contacts?.[0]
+
+        const payload = {
             recipientEmail: recipientEmail.value,
             recipientName: recipientName.value,
-            fields: dsFields.value
+            customerFinanceName: props.modelValue.customerFinanceName ?? '',
+            customerFinanceEmail: props.modelValue.customerFinanceEmail ?? '',
+            csaName: props.modelValue.csaName ?? '',
+            csaEmail: props.modelValue.csaEmail ?? '',
+            ownerName: primaryOwner?.name ?? '',
+            ownerEmail: primaryOwner?.email ?? '',
+            applicationGuid: route.params.guid,
+            LogoPath:
+                props.modelValue.Plant?.Logo ??
+                'https://customer.ennis.com/images/ennis.png',
+            ...props.modelValue
         }
 
         const { data } = await axios.post<PrefillResponse>(
-            `${API_BASE}/api/docusign/generate-prefill`,
+            `${API_BASE}/api/credit-app/start-signing`,
             payload,
             { headers: { 'Content-Type': 'application/json' } }
         )
 
-        if (!data?.signingUrl) throw new Error('No signingUrl returned')
-        signingUrl.value = data.signingUrl
+        if (!data?.url) throw new Error('No signing URL returned')
+
+        signingUrl.value = data.url
+        const ifMatch = ensureQuotedEtag(props.etag)
+        if (ifMatch) {
+            try {
+                const requestPayload: Record<string, unknown> = {}
+                if (data.envelopeId) requestPayload.envelopeId = data.envelopeId
+                if (data.statusDateTime) requestPayload.docusignStatusDateTime = data.statusDateTime
+
+                await axios.patch(
+                    `${API_BASE}/api/apps/${route.params.guid as string}/docusign/requests`,
+                    requestPayload,
+                    { headers: { 'If-Match': ifMatch } }
+                )
+
+                await axios.put(`${API_BASE}/api/apps/${route.params.guid as string}/status`, {
+                    status: data.status,
+                })
+            } catch (err) {
+                const msg = err instanceof Error ? err.message : String(err)
+                $q.notify({ type: 'warning', message: `DocuSign status update failed: ${msg}` })
+            }
+        } else {
+            $q.notify({ type: 'warning', message: 'Missing application ETag. Unable to update DocuSign status.' })
+        }
+
+        // Redirect instead of iframe
+        // window.location.assign(data.url)
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         errorMsg.value = `Unable to start DocuSign: ${msg}`
@@ -97,7 +123,7 @@ onMounted(async () => {
 
                 <div v-if="loading" class="relative-position" style="min-height: 200px;">
                     <q-inner-loading showing />
-                    <div class="text-caption q-mt-sm">Preparing your DocuSign envelope…</div>
+                    <div class="text-caption q-mt-sm">Opening a secure DocuSign link for signing.</div>
                 </div>
 
                 <div v-else-if="errorMsg" class="column items-start q-gutter-sm">
@@ -107,18 +133,12 @@ onMounted(async () => {
                     <q-btn color="primary" icon="refresh" label="Try again" @click="retry" />
                 </div>
 
-                <div v-else-if="signingUrl">
-                    <!-- Embedded signing -->
-                    <div class="q-mt-sm" style="height: 75vh; border-radius: 8px; overflow: hidden;">
-                        <iframe :src="signingUrl" title="DocuSign Embedded Signing"
-                            style="width: 100%; height: 100%; border: 0;" allow="clipboard-read; clipboard-write"
-                            referrerpolicy="no-referrer" />
+                <div v-else-if="signingUrl" class="q-gutter-sm">
+                    <div class="text-body2">
+                        We are redirecting you to a secure DocuSign signing page.
                     </div>
-                    <div class="text-caption text-grey-7 q-mt-sm">
-                        If the signing window doesn’t appear, your browser may be blocking third-party cookies or
-                        iframes. You can also
-                        <a :href="signingUrl" target="_blank" rel="noopener">open the signing link in a new tab</a>.
-                    </div>
+                    <q-btn color="primary" icon="open_in_new" label="Open DocuSign" :href="signingUrl" target="_blank"
+                        rel="noopener" />
                 </div>
 
                 <div v-else class="text-body2">

@@ -11,6 +11,8 @@ const routes: RouteRecordRaw[] = [
       { path: 'creditapp', component: () => import('pages/CreditAppInvitePage.vue') },
       { path: ':plant/creditapp/:guid', component: () => import('pages/CreditAppInvitePage.vue') },
       { path: 'admin', component: () => import('pages/AdminPage.vue') },
+      { path: 'admin/dashboard', redirect: '/admin?tab=apps' },
+      { path: 'thankyou/:guid', component: () => import('pages/ThankYouPage.vue') },
       { path: ':catchAll(.*)*', component: () => import('pages/ErrorNotFound.vue') },
     ],
   },
