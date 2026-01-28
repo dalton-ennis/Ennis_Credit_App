@@ -91,8 +91,7 @@ async function createPrefill() {
             $q.notify({ type: 'warning', message: 'Missing application ETag. Unable to update DocuSign status.' })
         }
 
-        // Redirect instead of iframe
-        // window.location.assign(data.url)
+        window.location.assign(data.url)
     } catch (err) {
         const msg = err instanceof Error ? err.message : String(err)
         errorMsg.value = `Unable to start DocuSign: ${msg}`

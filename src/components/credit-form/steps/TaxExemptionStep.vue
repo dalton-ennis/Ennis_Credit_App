@@ -222,7 +222,8 @@ const selectedExemption = computed<ExemptionValue>({
         The undersigned vendee hereby certifies that it is a regularly licensed retailer under the Law(s) of the
         state(s)
         indicated and that all tangible personal property purchased from: <b>ENNIS, INC. AND AFFILIATES AS DEFINED IN
-          <a href="https://printtermsandconditions.com" target="_blank" rel="noopener">printtermsandconditions.com</a></b>
+          <a href="https://printtermsandconditions.com" target="_blank"
+            rel="noopener">printtermsandconditions.com</a></b>
       </div>
 
       <!-- Purchaser info (prefilled from Business Info) -->
@@ -348,7 +349,7 @@ const selectedExemption = computed<ExemptionValue>({
             <q-select v-bind="fieldUi" v-model="local.nySt120.purchaserCountry" label="Purchaser Country *"
               :options="countryOptions" emit-value map-options :rules="[required]" />
           </div>
-          <div class="col-12">
+          <div class="col-12 col-md-6">
             <q-input v-bind="fieldUi" v-model="local.nySt120.purchaserAddress" label="Purchaser Address *"
               :rules="[required]" autocomplete="one-time-code" />
           </div>
@@ -356,7 +357,7 @@ const selectedExemption = computed<ExemptionValue>({
             <q-input v-bind="fieldUi" v-model="local.nySt120.nyRegistration" label="NY Registration # *"
               :rules="[required]" />
           </div>
-          <div class="col-12 col-md-6">
+          <!-- <div class="col-12 col-md-6">
             <q-input v-bind="fieldUi" v-model="local.nySt120.signerName" label="Signer Name *" :rules="[required]" />
           </div>
           <div class="col-12 col-md-6">
@@ -364,7 +365,7 @@ const selectedExemption = computed<ExemptionValue>({
           </div>
           <div class="col-12 col-md-6">
             <q-input v-bind="fieldUi" type="date" v-model="local.nySt120.signerDate" label="Signer Date" />
-          </div>
+          </div> -->
         </div>
       </div>
     </q-form>

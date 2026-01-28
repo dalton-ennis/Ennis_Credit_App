@@ -4,6 +4,7 @@ import {
     BusinessInfoStep,
     CreditRequestStep,
     TaxExemptionStep,
+    ReviewStep,
     SignatureStep,
 } from './steps'
 import type { CreditForm } from './types'
@@ -20,6 +21,7 @@ type StepId =
     | 'business'
     | 'credit'
     | 'tax'
+    | 'review'
     | 'sign'
 
 type StepDef = {
@@ -35,6 +37,7 @@ const allSteps: StepDef[] = [
     { id: 'business', title: 'Business Info', component: BusinessInfoStep, icon: "apartment" },
     { id: 'credit', title: 'Credit Request', component: CreditRequestStep, show: f => !!f.requestLineOfCredit, icon: 'request_quote' },
     { id: 'tax', title: 'Sales Tax Exemption', component: TaxExemptionStep, show: f => !!f.requestTaxExempt, icon: 'receipt_long' },
+    { id: 'review', title: 'Review', component: ReviewStep, icon: 'fact_check' },
     { id: 'sign', title: 'Sign & Consent', component: SignatureStep, icon: "draw" },
 ]
 interface StepComponent extends ComponentPublicInstance {
@@ -62,6 +65,12 @@ function next() {
 function back() {
     const i = currentIndex.value
     if (i > 0) current.value = steps.value[i - 1]!.id
+}
+
+function goToStep(stepId: StepId) {
+    if (steps.value.some(step => step.id === stepId)) {
+        current.value = stepId
+    }
 }
 
 const stepRefs: Record<string, StepComponent | null> = {}
@@ -95,6 +104,7 @@ defineExpose({ next, back, current, nextValidated, validateCurrentStep })
             <template v-for="(s, i) in steps" :key="s.id">
                 <q-step :name="s.id" :done="i < currentIndex" :title="s.title" :icon="s.icon">
                     <component :is="s.component" v-model="form" :etag="props.etag" @next="next" @back="back"
+                        @jump="goToStep"
                         :ref="(el: ComponentPublicInstance | null) => setStepRef(s.id, el)" />
                 </q-step>
             </template>

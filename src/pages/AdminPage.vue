@@ -463,50 +463,44 @@ onMounted(async () => {
             <div class="text-body2 text-grey-7">No applications yet.</div>
           </q-card>
 
-          <div class="row q-col-gutter-md" v-if="!loadingApps && filteredApps.length === 0 && apps.length > 0">
-            <div class="col-12">
-              <q-card flat bordered class="q-pa-md">
-                <div class="text-body2 text-grey-7">No applications match the current filters.</div>
-              </q-card>
-            </div>
-          </div>
+          <q-card flat bordered class="q-pa-md" v-if="!loadingApps && filteredApps.length === 0 && apps.length > 0">
+            <div class="text-body2 text-grey-7">No applications match the current filters.</div>
+          </q-card>
 
-          <div class="row q-col-gutter-md">
-            <div v-for="app in filteredApps" :key="app.ApplicationGuid" class="col-12 col-md-6">
-              <q-card flat bordered class="q-pa-md card-height">
-                <q-card-section class="row items-start q-pa-none q-mb-md">
-                  <div>
-                    <div class="text-subtitle1 text-weight-medium">{{ appTitle(app) }}</div>
-                    <div class="text-caption text-grey-7">{{ app.CustomerEmail }}</div>
-                  </div>
-                  <q-space />
+          <q-card flat bordered class="q-pa-none">
+            <q-list separator>
+              <q-item class="list-header">
+                <q-item-section class="col-name text-caption text-grey-6">Customer</q-item-section>
+                <q-item-section class="col-plant text-caption text-grey-6">Plant</q-item-section>
+                <q-item-section class="col-status text-caption text-grey-6">Status</q-item-section>
+                <q-item-section class="col-created text-caption text-grey-6">Created</q-item-section>
+                <q-item-section class="col-actions text-caption text-grey-6" side>Actions</q-item-section>
+              </q-item>
+
+              <q-item v-for="app in filteredApps" :key="app.ApplicationGuid">
+                <q-item-section class="col-name">
+                  <div class="text-body1 text-weight-medium">{{ appTitle(app) }}</div>
+                  <div class="text-caption text-grey-7">{{ app.CustomerEmail }}</div>
+                </q-item-section>
+                <q-item-section class="col-plant">
+                  <div class="text-body2">{{ app.Plant?.Name ?? 'Unknown' }}</div>
+                </q-item-section>
+                <q-item-section class="col-status">
+                  <q-badge class="status-badge"
+                    :color="app.Status.toLowerCase() === 'signed' ? 'green' : 'blue-7'" align="middle">
+                    {{ app.Status }}
+                  </q-badge>
+                </q-item-section>
+                <q-item-section class="col-created">
+                  <div class="text-body2">{{ formatDate(app.CreatedAt) }}</div>
+                </q-item-section>
+                <q-item-section class="col-actions" side>
                   <q-btn icon="close" flat round dense color="negative" @click="requestDelete(app)"
                     aria-label="Delete application" />
-                </q-card-section>
-
-                <q-separator />
-
-                <q-card-section class="q-pa-none q-pt-md">
-                  <div class="row q-col-gutter-md">
-                    <div class="col-12 col-sm-6">
-                      <div class="text-caption text-grey-6">Plant</div>
-                      <div class="text-body2">{{ app.Plant?.Name ?? 'Unknown' }}</div>
-                    </div>
-                    <div class="col-12 col-sm-6">
-                      <div class="text-caption text-grey-6">Status</div>
-                      <q-badge :color="app.Status.toLowerCase() === 'signed' ? 'green' : 'blue-7'" align="middle">{{
-                        app.Status
-                        }}</q-badge>
-                    </div>
-                    <div class="col-12">
-                      <div class="text-caption text-grey-6">Created</div>
-                      <div class="text-body2">{{ formatDate(app.CreatedAt) }}</div>
-                    </div>
-                  </div>
-                </q-card-section>
-              </q-card>
-            </div>
-          </div>
+                </q-item-section>
+              </q-item>
+            </q-list>
+          </q-card>
         </q-tab-panel>
       </q-tab-panels>
     </div>
@@ -539,7 +533,31 @@ ol {
   margin: 0;
 }
 
-.card-height {
-  min-height: 210px;
+.list-header {
+  background: #f7f7f7;
+}
+
+.col-name {
+  min-width: 220px;
+}
+
+.col-plant {
+  min-width: 140px;
+}
+
+.col-status {
+  min-width: 120px;
+}
+
+.col-created {
+  min-width: 180px;
+}
+
+.col-actions {
+  min-width: 60px;
+}
+
+.status-badge {
+  width: fit-content;
 }
 </style>

@@ -3,13 +3,14 @@ import { computed } from 'vue'
 import type { CreditForm } from '../types'
 
 const props = defineProps<{ modelValue: CreditForm }>()
-const emit = defineEmits(['update:modelValue', 'back', 'submit'])
+const emit = defineEmits(['update:modelValue', 'back', 'next', 'jump'])
 
 const f = computed(() => props.modelValue)
 const fieldUi = { filled: true, 'bg-color': 'grey-2', dense: true, readonly: true } as const
 
 function onBack() { emit('back') }
-function onSubmit() { emit('submit') }
+function onNext() { emit('next') }
+function onJump(step: 'business' | 'credit' | 'tax') { emit('jump', step) }
 </script>
 
 <template>
@@ -20,7 +21,8 @@ function onSubmit() { emit('submit') }
 
                         <!-- Business Info -->
                         <q-card-section>
-                                <div class="text-subtitle2 q-mb-sm">Business Information</div>
+                                <q-btn flat dense class="section-link q-mb-sm" icon="edit" label="Business Information"
+                                        @click="onJump('business')" />
                                 <div class="row q-col-gutter-md">
                                         <div class="col-12 col-md-6"><q-input v-bind="fieldUi"
                                                         :model-value="f.companyName" label="Firm Name" /></div>
@@ -102,8 +104,9 @@ function onSubmit() { emit('submit') }
                         <q-separator />
 
                         <!-- Credit Request (Owners, Bank, Trades) -->
-                        <q-card-section v-if="f.yearsInBusiness">
-                                <div class="text-subtitle2 q-mb-sm">Credit Request</div>
+                        <q-card-section v-if="f.requestLineOfCredit">
+                                <q-btn flat dense class="section-link q-mb-sm" icon="edit" label="Credit Request"
+                                        @click="onJump('credit')" />
                                 <div class="row q-col-gutter-md">
                                         <div class="col-12 col-md-6"><q-input v-bind="fieldUi"
                                                         :model-value="f.yearsInBusiness" label="Years in Business" />
@@ -194,7 +197,8 @@ function onSubmit() { emit('submit') }
 
                         <!-- Tax Exemption -->
                         <q-card-section v-if="f.requestTaxExempt">
-                                <div class="text-subtitle2 q-mb-sm">Tax Exemption</div>
+                                <q-btn flat dense class="section-link q-mb-sm" icon="edit" label="Tax Exemption"
+                                        @click="onJump('tax')" />
                                 <div class="row q-col-gutter-md">
                                         <div class="col-12 col-md-6"><q-input v-bind="fieldUi"
                                                         :model-value="(f.exemptStates || []).join(', ')"
@@ -313,7 +317,7 @@ function onSubmit() { emit('submit') }
 
                 <div class="row q-gutter-sm q-mt-md">
                         <q-btn color="secondary" label="Back" @click="onBack" />
-                        <q-btn color="primary" label="Submit" @click="onSubmit" />
+                        <q-btn color="primary" label="Continue to Sign" @click="onNext" />
                 </div>
         </div>
 </template>
@@ -321,5 +325,11 @@ function onSubmit() { emit('submit') }
 <style scoped>
 .rounded-borders {
         border-radius: 10px;
+}
+
+.section-link {
+        text-transform: none;
+        font-weight: 600;
+        text-decoration: underline;
 }
 </style>
